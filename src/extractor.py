@@ -40,7 +40,6 @@ def buscar_ofertas(termino: str, categoria: str, paginas:int = 3) -> list[dict]:
                      }
         respuesta = requests.get(url, params=params) 
         datos = respuesta.json()
-        print(datos)
         ofertas = datos.get("results", [])
         for oferta in ofertas:
             resultados.append({
@@ -56,7 +55,8 @@ def buscar_ofertas(termino: str, categoria: str, paginas:int = 3) -> list[dict]:
                 "experiencia_requerida": None,
                 "stack_tecnologico": None,
                 "nivel_ingles": None,
-                "url_oferta": oferta.get("redirect_url", None)
+                "url_oferta": oferta.get("redirect_url", None),
+                "description": oferta.get("description", None)
             })
         
         time.sleep(1)

@@ -1,3 +1,6 @@
+import re
+import pandas as pd
+
 def limpiar_fecha(fecha_raw:str) ->str:
     if fecha_raw is None:
         return None 
@@ -40,14 +43,33 @@ def detectar_ingles(texto:str)->str:
             return "requerido"
         else:
             return "no especificado"
+
+def detectar_stack(texto: str) -> str:
+    if texto is None:
+        return None
+    else:
+        texto = texto.lower()
+        tecnologias = ["python", "sql", "docker", "spark","tensorflow", "pytorch", "scikit", "pandas", "aws", "azure", "react", "javascript", "typescript", "tableau", "power bi", "kubernetes", "airflow"]
+        patron = r'\b(' + '|'.join(tecnologias) + r')\b'
+        encontradas = re.findall(patron, texto)
+        if encontradas:
+            return ", ".join(encontradas)
+        else:
+            return "no especificado"
         
+
+
     
 def transformar_ofertas(ofertas: list[dict]) ->list[dict]:
     if ofertas is None:
         return None
     else: 
         for oferta in ofertas:
-            oferta["fecha_modificacion"] = limpiar_fecha(oferta["fecha_publicacion"])
+            oferta["fecha_publicacion"] = limpiar_fecha(oferta.get("fecha_publicacion"))
+            oferta["modalidad"] = detectar_modalidad(oferta.get("description"))
+            oferta["nivel_ingles"] = detectar_ingles(oferta.get("description"))
+            oferta["stack_tecnologico"] = detectar_stack(oferta.get("description"))
+        return ofertas 
 
-        
+
             
