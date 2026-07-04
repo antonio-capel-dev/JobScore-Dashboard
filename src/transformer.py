@@ -1,5 +1,7 @@
 import re
 import pandas as pd
+from datetime import date
+
 
 def limpiar_fecha(fecha_raw:str) ->str:
     if fecha_raw is None:
@@ -69,6 +71,7 @@ def transformar_ofertas(ofertas: list[dict]) ->list[dict]:
             oferta["modalidad"] = detectar_modalidad(oferta.get("description"))
             oferta["nivel_ingles"] = detectar_ingles(oferta.get("description"))
             oferta["stack_tecnologico"] = detectar_stack(oferta.get("description"))
+            oferta.pop("description", None)
         return ofertas 
 
 
