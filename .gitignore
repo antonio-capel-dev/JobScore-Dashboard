@@ -1,0 +1,15 @@
+# Node / web+api
+node_modules/
+dist/
+.env
+
+# Python / scraper
+__pycache__/
+venv/
+*.pyc
+
+# Editor
+.vscode/
+
+# Notas internas (no es parte del proyecto)
+JobScore Dashboard.md.txt
