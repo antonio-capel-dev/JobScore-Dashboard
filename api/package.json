@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
-  }, 
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.110.7",
+    "csv-parse": "^7.0.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1"
   },
