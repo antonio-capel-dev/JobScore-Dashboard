@@ -4,6 +4,8 @@ import fs from 'node:fs';
 export interface ParsedOffer {
     fecha_scrape: string;
     fecha_publicacion: string;
+    fuente: string|null;
+    encaja_perfil: 'Si'|'Quizas'|'No'|null;
     empresa: string;
     titulo_puesto: string;
     categoria: 'IA' | 'WEB';
@@ -17,6 +19,16 @@ export interface ParsedOffer {
     url_oferta: string;
 }
 
+export function normalizarFechaPublicacion(fecha: string, fuente: string | undefined): string {
+    if (fuente) {
+        const partes = fecha.split('/');
+        return `${partes[2]}-${partes[1]}-${partes[0]}`;
+    }
+    else {
+        return fecha;
+    }
+}
+
 export function parseOffersCsv(filePath: string): ParsedOffer[] {
     const contenido = fs.readFileSync(filePath, 'utf-8');
     const filas = parse(contenido, {
@@ -26,7 +38,9 @@ export function parseOffersCsv(filePath: string): ParsedOffer[] {
     });
     return filas.map((fila: any) => ({
         fecha_scrape: fila.fecha_scrape,
-        fecha_publicacion: fila.fecha_publicacion,
+        fecha_publicacion: normalizarFechaPublicacion(fila.fecha_publicacion, fila.fuente),
+        fuente: fila.fuente,
+        encaja_perfil: fila.encaja_perfil,
         empresa: fila.empresa,
         titulo_puesto: fila.titulo_puesto,
         categoria: fila.categoria as 'IA' | 'WEB',
