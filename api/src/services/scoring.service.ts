@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { ParsedOffer } from "./csvImport.service";
 
 function extraerJson(content:string):string {
@@ -46,10 +47,29 @@ function construirPrompt(offer: ParsedOffer): string {
   "recomendacion": "<una frase corta recomendando o no aplicar, y por qué>"
 }
     `;
+}
 
-    
-    
+export async function scoreOffer(offer: ParsedOffer): Promise<ScoringResult>  {
+    const prompt = construirPrompt(offer);
 
+    const respuesta = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: 'inclusionai/ling-3.0-flash:free',
+            messages: [{role: 'user', content: prompt}],
+        }),
 
+        
+    })
+    const data = await respuesta.json();
+    const content = data.choices[0].message.content;
+    const contenidoExtraido = extraerJson(content);
+    const contenidoFinal= JSON.parse(contenidoExtraido);
+
+    return contenidoFinal;
 
 }
