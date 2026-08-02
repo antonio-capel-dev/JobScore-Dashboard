@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { guardarOferta } from "../db/offers.repository";
+import { guardarOferta, obtenerOfertas } from "../db/offers.repository";
 import { parseOffersCsv } from "../services/csvImport.service";
 import { scoreOffer, ScoringResult } from "../services/scoring.service";
 
@@ -29,4 +29,8 @@ export async function importOffers (req: Request, res: Response) {
         }
     }
     res.json({ total: offers.length, puntuadas: resultados.length, resultados });
+}
+export async function getOffers (req:Request, res:Response) {
+    const data = await obtenerOfertas();
+    res.json(data);
 }

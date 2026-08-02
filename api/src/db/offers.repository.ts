@@ -30,4 +30,17 @@ export async function guardarOferta(offer: ParsedOffer, scoring: ScoringResult) 
     if (error) {
         console.log('Error guardando oferta:', error);
     }
+    
+}
+
+export async function obtenerOfertas() {
+    const { data, error } = await supabase.from('offers').select("*"
+    );
+
+    if (error) {
+        console.log('Error buscando ofertas:', error);
+        return [];
+    }
+
+    return data;
 }
