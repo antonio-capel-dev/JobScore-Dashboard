@@ -6,12 +6,14 @@ function App() {
   const ofertas = useOffers();
   const [modalidadSeleccionada, setModalidadSeleccionada] = useState('todas');
   const [scoreMinimo, setScoreMinimo] = useState(0);
+  const[ ubicacionBuscada, setUbicacionBuscada ] = useState('');
 
   const ofertasFiltradas = ofertas.filter((oferta) => 
-    (modalidadSeleccionada === 'todas'|| oferta.modalidad === modalidadSeleccionada) && oferta.score >= scoreMinimo); 
+    (modalidadSeleccionada === 'todas'|| oferta.modalidad === modalidadSeleccionada) && oferta.score >= scoreMinimo && oferta.ubicacion.includes(ubicacionBuscada)); 
   
 
   return (
+
     <div className="p-8 max-w-2xl mx-auto">
     <h1 className="text-3xl font-bold text-blue-600 mb-6">JobScore Dashboard</h1>
     <select name="" id="" value={modalidadSeleccionada} onChange={(e) => setModalidadSeleccionada(e.target.value)}>
@@ -20,7 +22,11 @@ function App() {
       <option value="hibrido">Híbrido</option>
       <option value="no especificado">No especificado</option>
     </select>
+
+    <input type="text" placeholder="Buscar por ciudad..." value={ubicacionBuscada} onChange={(e) => setUbicacionBuscada(e.target.value)}/>
+
     <input type="range" min="0" max="100" value={scoreMinimo} onChange={(e) => setScoreMinimo(Number(e.target.value))}/>
+    
     <div className="space-y-3">
      {ofertasFiltradas.map((oferta) => {
       return <OfferCard key = {oferta.id} oferta={oferta}/>
