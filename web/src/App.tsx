@@ -1,3 +1,4 @@
+import { BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 import { useState } from "react";
 import { useOffers } from "./hooks/useOffers";
 import { OfferCard } from "./components/OfferCard";
@@ -10,6 +11,19 @@ function App() {
 
   const ofertasFiltradas = ofertas.filter((oferta) => 
     (modalidadSeleccionada === 'todas'|| oferta.modalidad === modalidadSeleccionada) && oferta.score >= scoreMinimo && oferta.ubicacion.includes(ubicacionBuscada)); 
+
+  
+
+  const datosModalidad = [
+    {
+    modalidad: 'Remoto', cantidad: ofertas.filter(oferta=>oferta.modalidad === 'remoto').length
+  },
+  {
+    modalidad: 'Híbrido', cantidad: ofertas.filter(oferta=>oferta.modalidad === 'hibrido').length
+  },
+  {
+    modalidad: 'No especificado', cantidad: ofertas.filter(oferta=>oferta.modalidad === 'no especificado').length},
+  ];
   
 
   return (
@@ -26,7 +40,12 @@ function App() {
     <input type="text" placeholder="Buscar por ciudad..." value={ubicacionBuscada} onChange={(e) => setUbicacionBuscada(e.target.value)}/>
 
     <input type="range" min="0" max="100" value={scoreMinimo} onChange={(e) => setScoreMinimo(Number(e.target.value))}/>
-    
+    <BarChart width={400} height={300} data={datosModalidad}>
+      <XAxis dataKey="modalidad" />
+      <YAxis allowDecimals={false}/>
+      <Tooltip />
+      <Bar dataKey="cantidad" fill="#f59e0b"/>
+    </BarChart>
     <div className="space-y-3">
      {ofertasFiltradas.map((oferta) => {
       return <OfferCard key = {oferta.id} oferta={oferta}/>
