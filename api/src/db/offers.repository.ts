@@ -4,6 +4,17 @@ import { ParsedOffer } from "../services/csvImport.service";
 
 import { ScoringResult } from "../services/scoring.service";
 
+export async function actualizarEstadoCandidatura(id:number, estado: string) {
+    const { error } = await supabase
+    .from('offers')
+    .update({estado_candidatura: estado})
+    .eq('id', id );
+
+    if (error) {
+        console.log('Error actualizando estado:', error);
+    }
+}
+
 export async function guardarOferta(offer: ParsedOffer, scoring: ScoringResult) {
     const { error } = await supabase.from('offers').insert({
         fecha_scrape: offer.fecha_scrape,
