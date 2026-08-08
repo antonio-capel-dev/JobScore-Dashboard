@@ -19,4 +19,5 @@ export interface Offer {
     brecha_principal: string;
     recomendacion: string;
     score: number;
+    estado_candidatura: null|'enviada'|'respuesta'|'oferta'|'entrevista';
 }

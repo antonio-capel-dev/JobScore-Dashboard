@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { guardarOferta, obtenerOfertas } from "../db/offers.repository";
+import { actualizarEstadoCandidatura, guardarOferta, obtenerOfertas } from "../db/offers.repository";
 import { parseOffersCsv } from "../services/csvImport.service";
 import { scoreOffer, ScoringResult } from "../services/scoring.service";
 
@@ -33,4 +33,11 @@ export async function importOffers (req: Request, res: Response) {
 export async function getOffers (req:Request, res:Response) {
     const data = await obtenerOfertas();
     res.json(data);
+}
+
+export async function updateOfferStatus(req: Request, res:Response) {
+    const id = Number(req.params.id);
+    const estado = req.body.estado_candidatura;
+    await actualizarEstadoCandidatura(id, estado);
+    res.json({mensaje: 'Estado actualizado'});
 }

@@ -1,10 +1,12 @@
 import cors from 'cors';
 import express from 'express';
 import offerRoutes from './routes/offers.routes'
+import { supabase } from './db/supabaseClient';
 
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 app.get('/health', (req, res) => {
@@ -16,3 +18,4 @@ app.use(offerRoutes);
 app.listen(PORT, () => {
     console.log(`API escuchando en http://localhost:${PORT}`);
 });
+

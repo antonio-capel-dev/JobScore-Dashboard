@@ -52,7 +52,7 @@ Junior, CFGS DAW terminado + curso Full Stack Open. Fuerte en HTML/CSS/JS, React
 
 1. Semana 1 — hecho: tabla `offers` en Supabase con migración, esqueleto de API (`/health`), scaffold web con Tailwind, contrato de CSV documentado en `scraper/README.md` (esquemas Adzuna y Tecnoempleo).
 2. Semana 2 — en curso: `parseOffersCsv()` para el esquema Adzuna hecho y probado contra datos reales. Pendiente: mismo tratamiento para Tecnoempleo (fecha `DD/MM/YYYY`, columnas `fuente`/`encaja_perfil`, campos sin normalizar), endpoint de importación expuesto en el API, llamada a Claude para puntuar, insert en Supabase.
-3. Semana 3: dashboard — listado filtrable (score, ubicación, modalidad, prioridad) + primera gráfica en Recharts.
+3. Semana 3 — hecho: dashboard con listado filtrable (score mínimo, ubicación, modalidad) + primera gráfica de barras en Recharts (ofertas por modalidad). "Prioridad" no se implementó como filtro aparte — se cubre con el de score mínimo, decisión tomada el 2026-08-07 para no duplicar filtros redundantes.
 4. Semana 4: embudo de candidaturas (enviada → respuesta → entrevista → oferta), auth con Supabase, deploy en Vercel + Railway.
 5. Semana 5: migrar el cron + envío a Telegram + filtro de OpenClaw a `/api`, sustituyendo el heurístico `Si`/`Quizas` de `encaja_perfil` por el score real 0-100 de Claude. No es alertas "nuevas" — es sustituir la lógica que ya funciona en producción.
 6. Después: testing con Vitest, automatizar la ejecución periódica del scraper, migración a AWS.
