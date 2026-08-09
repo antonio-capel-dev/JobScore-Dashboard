@@ -4,8 +4,14 @@ import { fetchOffers } from '../api/offers';
 
 export function useOffers() {
     const [offers, setOffers] = useState<Offer[]>([]);
-    useEffect(() => { 
+    useEffect(() => {
         fetchOffers().then(setOffers);
     }, []);
-    return offers;
+
+    function actualizarEstadoOferta(id: number, nuevoEstado: Offer['estado_candidatura']) {
+        setOffers(prev => prev.map(oferta => oferta.id === id ? { ...oferta, estado_candidatura: nuevoEstado } : oferta));
+
+        return { offers, actualizarEstadoOferta };
+    }
 }
+
