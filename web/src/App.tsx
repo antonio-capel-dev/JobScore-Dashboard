@@ -25,6 +25,19 @@ function App() {
   {
     modalidad: 'No especificado', cantidad: ofertas.filter(oferta=>oferta.modalidad === 'no especificado').length},
   ];
+
+  const datosEmbudo = [
+    { fase: 'enviada', cantidad: ofertas.filter(oferta=>oferta.estado_candidatura === 'enviada').length},
+    {
+      fase: 'respuesta', cantidad: ofertas.filter(oferta=>oferta.estado_candidatura === 'respuesta').length
+    },
+    {
+      fase: 'oferta', cantidad: ofertas.filter(oferta=>oferta.estado_candidatura === 'oferta').length
+    },
+    {
+      fase: 'entrevista', cantidad: ofertas.filter(oferta=>oferta.estado_candidatura === 'entrevista').length
+    }
+  ];
   
 
   return (
@@ -47,6 +60,14 @@ function App() {
       <Tooltip />
       <Bar dataKey="cantidad" fill="#f59e0b"/>
     </BarChart>
+
+    <BarChart width={400} height={300} data={datosEmbudo}>
+      <XAxis dataKey="fase" />
+      <YAxis allowDecimals={false}/>
+      <Tooltip />
+      <Bar dataKey="cantidad" fill="#3b82f6"/>
+    </BarChart>
+
     <div className="space-y-3">
      {ofertasFiltradas.map((oferta) => {
       return <OfferCard key = {oferta.id} oferta={oferta} onCambiarEstado={actualizarEstadoOferta}/>
