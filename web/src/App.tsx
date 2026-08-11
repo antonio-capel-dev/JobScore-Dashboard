@@ -4,7 +4,8 @@ import { useOffers } from "./hooks/useOffers";
 import { OfferCard } from "./components/OfferCard";
 
 function App() {
-  const ofertas = useOffers();
+  
+  const { offers: ofertas, actualizarEstadoOferta } = useOffers();
   const [modalidadSeleccionada, setModalidadSeleccionada] = useState('todas');
   const [scoreMinimo, setScoreMinimo] = useState(0);
   const[ ubicacionBuscada, setUbicacionBuscada ] = useState('');
@@ -48,7 +49,7 @@ function App() {
     </BarChart>
     <div className="space-y-3">
      {ofertasFiltradas.map((oferta) => {
-      return <OfferCard key = {oferta.id} oferta={oferta}/>
+      return <OfferCard key = {oferta.id} oferta={oferta} onCambiarEstado={actualizarEstadoOferta}/>
        
     })}
     </div>

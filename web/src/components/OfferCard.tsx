@@ -3,9 +3,10 @@ import { updateOfferStatus } from "../api/offers";
 
 interface OfferCardProps {
     oferta: Offer; 
+    onCambiarEstado: (id:number, nuevoEstado: Offer['estado_candidatura']) => void;
 } 
 
-export function OfferCard({oferta}: OfferCardProps) {
+export function OfferCard({oferta, onCambiarEstado}: OfferCardProps ) {
     return ( 
         <div className="bg-amber-200 rounded-lg shadow p-4 flex justify-between items-center border">
             <h2 className="font-semibold text-lg">{oferta.titulo_puesto}
@@ -19,8 +20,9 @@ export function OfferCard({oferta}: OfferCardProps) {
                     id="estado"
                     value={oferta.estado_candidatura ?? ''} 
                     onChange={async ( e)  => {
-                    const nuevoEstado = e.target.value;
-                    await updateOfferStatus(oferta.id , nuevoEstado)
+                    const nuevoEstado = e.target.value === '' ? null : e.target.value as Offer['estado_candidatura'];
+
+                    await onCambiarEstado(oferta.id , nuevoEstado)
                 }} >
 
             <option value="">Sin estado</option>
