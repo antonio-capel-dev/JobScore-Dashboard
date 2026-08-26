@@ -24,8 +24,8 @@ export async function importOffers (req: Request, res: Response) {
             const oferta = await scoreOffer(offer);
             resultados.push(oferta);
             await guardarOferta(offer, oferta);
-        } catch {
-            console.log("Error");
+        } catch (err) {
+            console.log("Error en scoring/guardado:", err);
         }
     }
     res.json({ total: offers.length, puntuadas: resultados.length, resultados });
