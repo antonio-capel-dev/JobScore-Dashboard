@@ -1,14 +1,27 @@
 import { supabase } from "./supabaseClient";
-
 import { ParsedOffer } from "../services/csvImport.service";
-
 import { ScoringResult } from "../services/scoring.service";
 
-export async function actualizarEstadoCandidatura(id:number, estado: string) {
+export async function existeOfertaPorUrl(url: string): Promise<boolean> {
+    const { data, error } = await supabase
+        .from('offers')
+        .select('id')
+        .eq('url_oferta', url)
+        .maybeSingle();
+
+    if (error) {
+        console.log('Error comprobando existencia por URL:', error);
+        return false;
+    }
+
+    return data !== null;
+}
+
+export async function actualizarEstadoCandidatura(id: number, estado: string) {
     const { error } = await supabase
-    .from('offers')
-    .update({estado_candidatura: estado})
-    .eq('id', id );
+        .from('offers')
+        .update({ estado_candidatura: estado })
+        .eq('id', id);
 
     if (error) {
         console.log('Error actualizando estado:', error);
@@ -18,10 +31,10 @@ export async function actualizarEstadoCandidatura(id:number, estado: string) {
 export async function guardarOferta(offer: ParsedOffer, scoring: ScoringResult) {
     const { error } = await supabase.from('offers').insert({
         fecha_scrape: offer.fecha_scrape,
-        fuente : offer.fuente,
+        fuente: offer.fuente,
         fecha_publicacion: offer.fecha_publicacion,
         empresa: offer.empresa,
-        titulo_puesto : offer.titulo_puesto,
+        titulo_puesto: offer.titulo_puesto,
         categoria: offer.categoria,
         encaja_perfil: offer.encaja_perfil,
         ubicacion: offer.ubicacion,
@@ -41,12 +54,10 @@ export async function guardarOferta(offer: ParsedOffer, scoring: ScoringResult) 
     if (error) {
         console.log('Error guardando oferta:', error);
     }
-    
 }
 
 export async function obtenerOfertas() {
-    const { data, error } = await supabase.from('offers').select("*"
-    );
+    const { data, error } = await supabase.from('offers').select("*");
 
     if (error) {
         console.log('Error buscando ofertas:', error);
