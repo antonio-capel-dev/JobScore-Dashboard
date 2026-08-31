@@ -18,36 +18,39 @@ function extraerJson(content:string):string {
 
 export interface ScoringResult {
     score: number,
+    veredicto: 'Si' | 'Quizas' | 'No',
     tecnologiasCoincidentes: string[],
     brechaPrincipal: string,
     recomendacion: string
 }
 
 function construirPrompt(offer: ParsedOffer): string {
-    return `Eres un asistente que evalúa ofertas de empleO para un desarrollador junior.
+    return `Eres un asistente que evalúa ofertas de empleo para un desarrollador junior.
     
     Perfil del candidato:
-    -Nivel: junior, buscando su primer empleo como desarrollador
-    -Tecnologías que domina: HTML, CSS, Javascript, React (básico-intermedio), PHP, MySQL, Python
+    - Puesto objetivo: Junior Full-Stack Web Developer
+    - Tecnologías que domina: HTML5/CSS3, JavaScript, TypeScript, React, Node.js, Express, Tailwind CSS, REST APIs, PostgreSQL, Supabase, Python, Git
     
     OFERTA A EVALUAR:
     
-    -Puesto: ${offer.titulo_puesto}
-    -Tecnologías requeridas: ${offer.stack_tecnologico.join(', ')}
-    -Experiencia requerida: ${offer.experiencia_requerida}
-    -Modalidad: ${offer.modalidad}
-    -Salario: ${offer.salario_min} - ${offer.salario_max}
-    -Nivel de inglés requerido: ${offer.nivel_ingles}
+    - Puesto: ${offer.titulo_puesto}
+    - Tecnologías requeridas: ${offer.stack_tecnologico.join(', ')}
+    - Experiencia requerida: ${offer.experiencia_requerida ?? 'No especificada'}
+    - Modalidad: ${offer.modalidad}
+    - Salario: ${offer.salario_min ?? 'N/A'} - ${offer.salario_max ?? 'N/A'}
+    - Nivel de inglés requerido: ${offer.nivel_ingles}
     
     Responde ÚNICAMENTE con un JSON con esta forma exacta, sin texto adicional antes ni después:
 {
   "score": <número del 0 al 100 indicando qué tan bien encaja la oferta>,
+  "veredicto": "<'Si' si score >= 75, 'Quizas' si score está entre 45 y 74, 'No' si score < 45>",
   "tecnologiasCoincidentes": [<tecnologías de la oferta que el candidato ya domina>],
   "brechaPrincipal": "<la carencia más importante del candidato frente a esta oferta>",
   "recomendacion": "<una frase corta recomendando o no aplicar, y por qué>"
 }
     `;
 }
+
 
 export async function scoreOffer(offer: ParsedOffer): Promise<ScoringResult>  {
     const prompt = construirPrompt(offer);
@@ -63,13 +66,41 @@ export async function scoreOffer(offer: ParsedOffer): Promise<ScoringResult>  {
             messages: [{role: 'user', content: prompt}],
         }),
 
+
         
     })
     const data = await respuesta.json();
+
+    if (!respuesta.ok || !data.choices) {
+        console.error("Respuesta de error de OpenRouter:", data);
+        throw new Error(data.error?.message || "Error en la llamada a OpenRouter");
+    }
+
     const content = data.choices[0].message.content;
     const contenidoExtraido = extraerJson(content);
-    const contenidoFinal= JSON.parse(contenidoExtraido);
+    const parsed= JSON.parse(contenidoExtraido);
 
-    return contenidoFinal;
+    const score = Number(parsed.score) || 0;
 
+    let veredicto: 'Si'|'Quizas'|'No' ;
+
+    const veredictoRaw = String(parsed.veredicto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    if(veredictoRaw.includes('si') || score >= 75) {
+        veredicto = 'Si';
+    } else if (veredictoRaw.includes('quiza')|| (score >= 45 && score < 75)) {
+        veredicto = 'Quizas';
+    } else {
+        veredicto = 'No';
+    }
+
+    return {
+        score,
+        veredicto,
+        tecnologiasCoincidentes:Array.isArray(parsed.tecnologiasCoincidentes) ? parsed.tecnologiasCoincidentes : [],
+        brechaPrincipal: parsed.brechaPrincipal || '',
+        recomendacion: parsed.recomendacion || ''
+    };
 }
+
+

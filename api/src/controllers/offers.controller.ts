@@ -7,6 +7,7 @@ import {
 } from "../db/offers.repository";
 import { parseOffersCsv } from "../services/csvImport.service";
 import { scoreOffer, ScoringResult } from "../services/scoring.service";
+import { sendOfferNotification } from "../services/telegram.service";
 
 const rutasCsv: Record<string, string> = {
     adzuna: '../scraper/output/ofertas_2026-07-01.csv',
@@ -41,8 +42,12 @@ export async function importOffers(req: Request, res: Response) {
             const ofertaScored = await scoreOffer(offer);
             resultados.push(ofertaScored);
             await guardarOferta(offer, ofertaScored);
-        } catch (err) {
-            console.log("Error en scoring o guardado:", err);
+
+            if (ofertaScored.veredicto === 'Si' || ofertaScored.veredicto === 'Quizas') {
+                await sendOfferNotification(offer, ofertaScored);
+            }
+        } catch (error) {
+            console.error("Error procesando oferta:", error);
         }
     }
 
