@@ -36,7 +36,7 @@ export async function guardarOferta(offer: ParsedOffer, scoring: ScoringResult) 
         empresa: offer.empresa,
         titulo_puesto: offer.titulo_puesto,
         categoria: offer.categoria,
-        encaja_perfil: offer.encaja_perfil,
+        encaja_perfil: scoring.veredicto || offer.encaja_perfil,
         ubicacion: offer.ubicacion,
         modalidad: offer.modalidad,
         salario_min: offer.salario_min,
