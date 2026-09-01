@@ -1,7 +1,6 @@
 import cors from 'cors';
 import express from 'express';
-import offerRoutes from './routes/offers.routes'
-import { supabase } from './db/supabaseClient';
+import offerRoutes from './routes/offers.routes';
 
 
 const app = express();
