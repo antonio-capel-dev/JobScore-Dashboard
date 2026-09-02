@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import offerRoutes from './routes/offers.routes';
+import { iniciarCronJobs } from './services/cron.service';
 
 const app = express();
 app.use(cors());
@@ -15,4 +16,5 @@ app.use(offerRoutes);
 
 app.listen(PORT, () => {
     console.log(`API escuchando en http://localhost:${PORT}`);
+    iniciarCronJobs();
 });
