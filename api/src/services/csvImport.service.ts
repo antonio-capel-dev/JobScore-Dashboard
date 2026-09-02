@@ -29,6 +29,34 @@ export function normalizarFechaPublicacion(fecha: string, fuente: string | undef
     }
 }
 
+// Nueva función para filtrar ofertas
+function filterOffers(offers: ParsedOffer[]): ParsedOffer[] {
+    const filteredOffers: ParsedOffer[] = [];
+    for (const offer of offers) {
+        let keepOffer = true;
+
+        // 1. Filtro por Ubicación y Modalidad
+        const ubicacionLower = offer.ubicacion.toLowerCase();
+        const modalidadLower = offer.modalidad.toLowerCase();
+
+        if (modalidadLower === 'hibrido' || modalidadLower === 'presencial') {
+            if (!ubicacionLower.includes('malaga') && !ubicacionLower.includes('málaga')) {
+                keepOffer = false; // Descartar si es híbrido/presencial y no es Málaga
+            }
+        }
+
+        // 2. Filtro por Salario Mínimo
+        if (keepOffer && offer.salario_min !== null && offer.salario_min < 20000) {
+            keepOffer = false; // Descartar si el salario mínimo es inferior a 20k
+        }
+
+        if (keepOffer) {
+            filteredOffers.push(offer);
+        }
+    }
+    return filteredOffers;
+}
+
 export function parseOffersCsv(filePath: string): ParsedOffer[] {
     const contenido = fs.readFileSync(filePath, 'utf-8');
     const filas = parse(contenido, {
@@ -36,7 +64,7 @@ export function parseOffersCsv(filePath: string): ParsedOffer[] {
         skip_empty_lines: true,
         bom: true,
     });
-    return filas.map((fila: any) => ({
+    const parsedOffers = filas.map((fila: any) => ({
         fecha_scrape: fila.fecha_scrape,
         fecha_publicacion: normalizarFechaPublicacion(fila.fecha_publicacion, fila.fuente),
         fuente: fila.fuente,
@@ -53,5 +81,7 @@ export function parseOffersCsv(filePath: string): ParsedOffer[] {
         nivel_ingles: fila.nivel_ingles,
         url_oferta: fila.url_oferta,
     }));
+
+    return filterOffers(parsedOffers);
 }
 
