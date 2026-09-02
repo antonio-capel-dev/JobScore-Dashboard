@@ -17,7 +17,7 @@ export async function existeOfertaPorUrl(url: string): Promise<boolean> {
     return data !== null;
 }
 
-export async function actualizarEstadoCandidatura(id: number, estado: string) {
+export async function actualizarEstadoCandidatura(id: number, estado: string | null) {
     const { error } = await supabase
         .from('offers')
         .update({ estado_candidatura: estado })
@@ -68,4 +68,21 @@ export async function obtenerOfertas() {
     }
 
     return data;
+}
+
+// Purga de ofertas con bajo score (< 45) que no tengan candidatura activa
+export async function purgarOfertasDescartadas(): Promise<number> {
+    const { data, error } = await supabase
+        .from('offers')
+        .delete()
+        .lt('score', 45)
+        .is('estado_candidatura', null)
+        .select('id');
+
+    if (error) {
+        console.error('Error purgando ofertas de bajo score:', error);
+        return 0;
+    }
+
+    return data ? data.length : 0;
 }

@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import { 
     actualizarEstadoCandidatura, 
-    obtenerOfertas 
+    obtenerOfertas,
+    purgarOfertasDescartadas 
 } from "../db/offers.repository";
 import { procesarFuente, ejecutarPipelineCompleto } from "../services/pipeline.service";
 
@@ -30,6 +31,15 @@ export async function triggerPipeline(req: Request, res: Response) {
         res.json({ mensaje: "Pipeline completado", resultado });
     } catch (error: any) {
         console.error("Error ejecutando pipeline:", error);
+        res.status(500).json({ error: error.message });
+    }
+}
+
+export async function purgeLowScoreOffers(req: Request, res: Response) {
+    try {
+        const eliminadas = await purgarOfertasDescartadas();
+        res.json({ mensaje: `Se eliminaron ${eliminadas} ofertas descartadas de Supabase`, eliminadas });
+    } catch (error: any) {
         res.status(500).json({ error: error.message });
     }
 }
