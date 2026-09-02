@@ -4,6 +4,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export async function fetchOffers(): Promise<Offer[]> {
     const respuesta = await fetch(`${API_URL}/offers`);
+    if (!respuesta.ok) throw new Error(`fetchOffers failed: ${respuesta.status}`);
     const datos = await respuesta.json();
     return datos;
 }

@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { Request, Response } from "express";
 import { 
     actualizarEstadoCandidatura, 
@@ -22,8 +23,14 @@ export async function importOffers(req: Request, res: Response) {
         return res.status(400).json({ error: "Fuente no válida. Usa 'adzuna' o 'tecnoempleo'" });
     }
 
+    if (!fs.existsSync(ruta)) {
+        return res.status(404).json({ error: `Archivo CSV no encontrado en la ruta: ${ruta}` });
+    }
+
     // Permitir ?limit=N en la petición para pruebas, o procesar todo el CSV por defecto
-    const limitParam = req.query.limit ? Number(req.query.limit) : undefined;
+    const parsedLimit = req.query.limit ? Number(req.query.limit) : NaN;
+    const limitParam = !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
+
     const ofertasCsv = parseOffersCsv(ruta);
     const ofertasAProcesar = limitParam ? ofertasCsv.slice(0, limitParam) : ofertasCsv;
 
@@ -46,6 +53,9 @@ export async function importOffers(req: Request, res: Response) {
             if (ofertaScored.veredicto === 'Si' || ofertaScored.veredicto === 'Quizas') {
                 await sendOfferNotification(offer, ofertaScored);
             }
+
+            // Pausa de 1.5s entre llamadas para respetar el rate limit de OpenRouter
+            await new Promise(resolve => setTimeout(resolve, 1500));
         } catch (error) {
             console.error("Error procesando oferta:", error);
         }

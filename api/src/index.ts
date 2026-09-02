@@ -2,7 +2,6 @@ import cors from 'cors';
 import express from 'express';
 import offerRoutes from './routes/offers.routes';
 
-
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -17,4 +16,3 @@ app.use(offerRoutes);
 app.listen(PORT, () => {
     console.log(`API escuchando en http://localhost:${PORT}`);
 });
-
