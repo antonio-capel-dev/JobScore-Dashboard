@@ -10,14 +10,35 @@ import { parseOffersCsv } from "../services/csvImport.service";
 import { scoreOffer, ScoringResult } from "../services/scoring.service";
 import { sendOfferNotification } from "../services/telegram.service";
 
-const rutasCsv: Record<string, string> = {
-    adzuna: '../scraper/output/ofertas_2026-07-01.csv',
-    tecnoempleo: '../scraper/data/empleos_tech_ia_web.csv',  
-};
+function obtenerRutaCsv(fuente: string): string | null {
+    if (fuente === 'tecnoempleo') {
+        if (process.env.CSV_PATH_TECNOEMPLEO && fs.existsSync(process.env.CSV_PATH_TECNOEMPLEO)) {
+            return process.env.CSV_PATH_TECNOEMPLEO;
+        }
+        const rutaOpenClaw = 'D:/OPENCLAW-DATOS-IMPORTANTES-GUARDADOS/empleos_tech_ia_web.csv';
+        if (fs.existsSync(rutaOpenClaw)) {
+            return rutaOpenClaw;
+        }
+        return '../scraper/data/empleos_tech_ia_web.csv';
+    }
+
+    if (fuente === 'adzuna') {
+        if (process.env.CSV_PATH_ADZUNA && fs.existsSync(process.env.CSV_PATH_ADZUNA)) {
+            return process.env.CSV_PATH_ADZUNA;
+        }
+        const rutaOpenClaw = 'D:/OPENCLAW-DATOS-IMPORTANTES-GUARDADOS/ofertas_adzuna.csv';
+        if (fs.existsSync(rutaOpenClaw)) {
+            return rutaOpenClaw;
+        }
+        return '../scraper/output/ofertas_2026-07-01.csv';
+    }
+
+    return null;
+}
 
 export async function importOffers(req: Request, res: Response) {
     const fuente = req.params.fuente as string;
-    const ruta = rutasCsv[fuente];
+    const ruta = obtenerRutaCsv(fuente);
 
     if (!ruta) {
         return res.status(400).json({ error: "Fuente no válida. Usa 'adzuna' o 'tecnoempleo'" });
@@ -31,6 +52,7 @@ export async function importOffers(req: Request, res: Response) {
     const parsedLimit = req.query.limit ? Number(req.query.limit) : NaN;
     const limitParam = !isNaN(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
 
+    console.log(`[Import] Procesando ${fuente} desde archivo: ${ruta}`);
     const ofertasCsv = parseOffersCsv(ruta);
     const ofertasAProcesar = limitParam ? ofertasCsv.slice(0, limitParam) : ofertasCsv;
 
