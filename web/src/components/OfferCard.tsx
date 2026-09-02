@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Offer } from "../types/offer";
 
 interface OfferCardProps {
@@ -5,205 +6,213 @@ interface OfferCardProps {
     onCambiarEstado: (id: number, nuevoEstado: Offer['estado_candidatura']) => void;
 }
 
-function getScoreBadgeStyle(score: number) {
-    if (score >= 70) {
-        return {
-            gradient: "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-200",
-            label: "Alta coincidencia",
-            bgLight: "bg-emerald-50 text-emerald-700 border-emerald-200"
-        };
+function formatearFecha(fecha: string | null | undefined): string {
+    if (!fecha) return '—';
+    try {
+        const d = new Date(fecha);
+        if (isNaN(d.getTime())) return fecha;
+        return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+        return fecha;
     }
-    if (score >= 40) {
-        return {
-            gradient: "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-200",
-            label: "Coincidencia media",
-            bgLight: "bg-amber-50 text-amber-700 border-amber-200"
-        };
-    }
-    return {
-        gradient: "bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-rose-200",
-        label: "Baja coincidencia",
-        bgLight: "bg-rose-50 text-rose-700 border-rose-200"
-    };
 }
 
-function getEstadoBadgeStyle(estado: Offer['estado_candidatura']) {
+function diasDesde(fecha: string | null | undefined): string {
+    if (!fecha) return '';
+    try {
+        const d = new Date(fecha);
+        if (isNaN(d.getTime())) return '';
+        const diff = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
+        if (diff === 0) return 'hoy';
+        if (diff === 1) return 'ayer';
+        return `hace ${diff}d`;
+    } catch {
+        return '';
+    }
+}
+
+function scoreColor(score: number) {
+    if (score >= 75) return { bg: 'bg-emerald-600', text: 'text-emerald-600', light: 'bg-emerald-50', border: 'border-emerald-200' };
+    if (score >= 45) return { bg: 'bg-amber-500', text: 'text-amber-600', light: 'bg-amber-50', border: 'border-amber-200' };
+    return { bg: 'bg-slate-400', text: 'text-slate-500', light: 'bg-slate-50', border: 'border-slate-200' };
+}
+
+function estadoStyle(estado: Offer['estado_candidatura']) {
     switch (estado) {
         case 'enviada': return 'bg-blue-50 text-blue-700 border-blue-200';
-        case 'respuesta': return 'bg-purple-50 text-purple-700 border-purple-200';
+        case 'respuesta': return 'bg-violet-50 text-violet-700 border-violet-200';
         case 'entrevista': return 'bg-amber-50 text-amber-800 border-amber-200';
-        case 'oferta': return 'bg-emerald-50 text-emerald-800 border-emerald-200 font-bold';
-        default: return 'bg-gray-50 text-gray-600 border-gray-200';
+        case 'oferta': return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+        default: return 'bg-slate-50 text-slate-500 border-slate-200';
     }
 }
 
 export function OfferCard({ oferta, onCambiarEstado }: OfferCardProps) {
-    const scoreStyle = getScoreBadgeStyle(oferta.score);
+    const sc = scoreColor(oferta.score);
+    const [expandido, setExpandido] = useState(false);
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden group">
-            
-            <div className={`h-1.5 w-full ${scoreStyle.gradient}`} />
+        <article className="bg-white rounded-xl border border-slate-200/80 hover:border-slate-300 transition-all group">
+            {/* Fila Principal — siempre visible */}
+            <div className="p-5 flex flex-col md:flex-row md:items-center gap-4">
 
-            <div className="p-6 space-y-5">
-                
-                {/* Cabecera */}
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div className="space-y-1.5">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                {oferta.categoria || 'Tech'}
-                            </span>
-                            
-                            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-700">
-                                {oferta.ubicacion} ({oferta.modalidad})
-                            </span>
+                {/* Score compacto */}
+                <div className={`w-14 h-14 ${sc.bg} rounded-xl flex flex-col items-center justify-center text-white shrink-0`}>
+                    <span className="text-xl font-black leading-none">{oferta.score}</span>
+                    <span className="text-[9px] font-medium opacity-75">pts</span>
+                </div>
 
-                            {oferta.nivel_ingles && (
-                                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-sky-50 text-sky-700 border border-sky-100">
-                                    Inglés: {oferta.nivel_ingles}
-                                </span>
-                            )}
-                        </div>
-
-                        <h2 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors leading-tight pt-1">
+                {/* Info principal */}
+                <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-start justify-between gap-3">
+                        <h3 className="text-sm font-bold text-slate-900 leading-snug line-clamp-1 group-hover:text-blue-700 transition-colors">
                             {oferta.titulo_puesto}
-                        </h2>
-
-                        <div className="flex items-center gap-3 text-sm text-gray-600">
-                            <span className="font-semibold text-gray-800">{oferta.empresa}</span>
-                            
-                            {(oferta.salario_min || oferta.salario_max) && (
-                                <>
-                                    <span>•</span>
-                                    <span className="font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 text-xs">
-                                        {oferta.salario_min ? `${oferta.salario_min.toLocaleString()}€` : ''} 
-                                        {oferta.salario_min && oferta.salario_max ? ' - ' : ''}
-                                        {oferta.salario_max ? `${oferta.salario_max.toLocaleString()}€` : ''} / año
-                                    </span>
-                                </>
-                            )}
-                        </div>
+                        </h3>
                     </div>
 
-                    {/* Score */}
-                    <div className="flex flex-col items-end shrink-0">
-                        <div className={`px-4 py-2 rounded-2xl font-black text-lg flex items-baseline gap-1 shadow-md ${scoreStyle.gradient}`}>
-                            <span className="text-2xl">{oferta.score}</span>
-                            <span className="text-xs font-normal opacity-85">/100</span>
-                        </div>
-                        <span className="text-[11px] font-medium text-gray-400 mt-1">
-                            {scoreStyle.label}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Feedback IA */}
-                <div className="bg-slate-50/80 rounded-xl p-4 border border-slate-100 space-y-3">
-                    
-                    <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60 text-xs font-bold text-slate-700 uppercase tracking-wider">
-                        <span>Evaluación de candidatura</span>
-                    </div>
-
-                    {/* Tecnologías coincidentes */}
-                    {oferta.tecnologias_coincidentes && oferta.tecnologias_coincidentes.length > 0 && (
-                        <div className="space-y-1.5">
-                            <span className="text-xs font-medium text-slate-500">Coincidencias de perfil:</span>
-                            <div className="flex flex-wrap gap-1.5">
-                                {oferta.tecnologias_coincidentes.map((tech, i) => (
-                                    <span key={i} className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-700 border border-emerald-200/60 px-2.5 py-1 rounded-lg text-xs font-semibold">
-                                        <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        {tech}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Stack de la oferta */}
-                    {oferta.stack_tecnologico && oferta.stack_tecnologico.length > 0 && (
-                        <div className="space-y-1">
-                            <span className="text-xs font-medium text-slate-500">Stack requerido:</span>
-                            <div className="flex flex-wrap gap-1 text-xs">
-                                {oferta.stack_tecnologico.map((tech, i) => {
-                                    const coincide = oferta.tecnologias_coincidentes?.includes(tech);
-                                    return (
-                                        <span 
-                                            key={i} 
-                                            className={`px-2 py-0.5 rounded text-[11px] ${
-                                                coincide 
-                                                    ? 'bg-emerald-100/80 text-emerald-800 font-medium' 
-                                                    : 'bg-slate-200/70 text-slate-600'
-                                            }`}
-                                        >
-                                            {tech}
-                                        </span>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Brecha principal */}
-                    {oferta.brecha_principal && (
-                        <div className="bg-rose-50/80 border-l-4 border-rose-500 rounded-r-xl p-3 text-xs text-rose-900 space-y-0.5">
-                            <span className="font-bold block text-rose-700">
-                                Brecha principal:
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                        <span className="font-semibold text-slate-700">{oferta.empresa}</span>
+                        <span>{oferta.ubicacion}</span>
+                        <span className="capitalize">{oferta.modalidad}</span>
+                        {(oferta.salario_min || oferta.salario_max) && (
+                            <span className="text-emerald-700 font-semibold">
+                                {oferta.salario_min ? `${oferta.salario_min.toLocaleString()}€` : ''}
+                                {oferta.salario_min && oferta.salario_max ? ' – ' : ''}
+                                {oferta.salario_max ? `${oferta.salario_max.toLocaleString()}€` : ''}
                             </span>
-                            <p className="leading-relaxed">{oferta.brecha_principal}</p>
-                        </div>
-                    )}
-
-                    {/* Recomendación */}
-                    {oferta.recomendacion && (
-                        <div className="bg-blue-50/60 border-l-4 border-blue-500 rounded-r-xl p-3 text-xs text-blue-950 italic">
-                            <span className="font-bold not-italic text-blue-700 block mb-0.5">Recomendación:</span>
-                            "{oferta.recomendacion}"
-                        </div>
-                    )}
-                </div>
-
-                {/* Pie de tarjeta */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs">
-                    
-                    {/* Selector de estado */}
-                    <div className="flex items-center gap-2">
-                        <label className="text-gray-500 font-semibold">Estado:</label>
-                        <select
-                            value={oferta.estado_candidatura ?? ''}
-                            onChange={async (e) => {
-                                const nuevoEstado = e.target.value === '' ? null : e.target.value as Offer['estado_candidatura'];
-                                await onCambiarEstado(oferta.id, nuevoEstado);
-                            }}
-                            className={`border rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors ${getEstadoBadgeStyle(oferta.estado_candidatura)}`}
-                        >
-                            <option value="">Sin postular</option>
-                            <option value="enviada">Enviada</option>
-                            <option value="respuesta">Respuesta</option>
-                            <option value="entrevista">Entrevista</option>
-                            <option value="oferta">Oferta</option>
-                        </select>
+                        )}
                     </div>
 
-                    {/* Enlace original */}
+                    {/* Fechas — la parte clave que pediste */}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 pt-0.5">
+                        <span title="Fecha de publicación de la oferta">
+                            Publicada: <strong className="text-slate-600">{formatearFecha(oferta.fecha_publicacion)}</strong>
+                            {' '}
+                            <span className="text-slate-400">({diasDesde(oferta.fecha_publicacion)})</span>
+                        </span>
+                        <span title="Fecha en que el scraper extrajo esta oferta">
+                            Extraída: <strong className="text-slate-600">{formatearFecha(oferta.fecha_scrape)}</strong>
+                        </span>
+                        {oferta.fuente && (
+                            <span className="text-slate-400">
+                                Fuente: <strong className="text-slate-500">{oferta.fuente}</strong>
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Controles a la derecha */}
+                <div className="flex items-center gap-3 shrink-0">
+                    {/* Selector de estado */}
+                    <select
+                        value={oferta.estado_candidatura ?? ''}
+                        onChange={async (e) => {
+                            const nuevo = e.target.value === '' ? null : e.target.value as Offer['estado_candidatura'];
+                            await onCambiarEstado(oferta.id, nuevo);
+                        }}
+                        className={`border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${estadoStyle(oferta.estado_candidatura)}`}
+                    >
+                        <option value="">Sin postular</option>
+                        <option value="enviada">Enviada</option>
+                        <option value="respuesta">Respuesta</option>
+                        <option value="entrevista">Entrevista</option>
+                        <option value="oferta">Oferta</option>
+                    </select>
+
+                    {/* Expandir/colapsar detalle IA */}
+                    <button
+                        onClick={() => setExpandido(!expandido)}
+                        className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+                        title={expandido ? 'Ocultar análisis IA' : 'Ver análisis IA'}
+                    >
+                        {expandido ? '▲ Menos' : '▼ Detalle IA'}
+                    </button>
+
+                    {/* Ver oferta */}
                     {oferta.url_oferta && (
                         <a
                             href={oferta.url_oferta}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gray-900 text-white font-medium hover:bg-blue-600 transition-colors shadow-sm text-xs"
+                            className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-blue-600 transition-colors"
                         >
-                            <span>Ver oferta original</span>
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
+                            Abrir ↗
                         </a>
                     )}
                 </div>
-
             </div>
-        </div>
+
+            {/* Panel expandible — Análisis IA */}
+            {expandido && (
+                <div className="px-5 pb-5 pt-0 space-y-3 border-t border-slate-100">
+                    <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+
+                        {/* Stack tecnológico */}
+                        {oferta.stack_tecnologico && oferta.stack_tecnologico.length > 0 && (
+                            <div className="space-y-1.5">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Stack requerido</span>
+                                <div className="flex flex-wrap gap-1">
+                                    {oferta.stack_tecnologico.map((tech, i) => {
+                                        const coincide = oferta.tecnologias_coincidentes?.includes(tech);
+                                        return (
+                                            <span 
+                                                key={i} 
+                                                className={`px-2 py-0.5 rounded text-[11px] font-medium ${
+                                                    coincide 
+                                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                                                        : 'bg-slate-100 text-slate-600'
+                                                }`}
+                                            >
+                                                {coincide && '✓ '}{tech}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Metadata adicional */}
+                        <div className="space-y-2 text-xs">
+                            {oferta.nivel_ingles && oferta.nivel_ingles !== 'no especificado' && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400 w-16">Inglés:</span>
+                                    <span className="font-semibold text-slate-700">{oferta.nivel_ingles}</span>
+                                </div>
+                            )}
+                            {oferta.experiencia_requerida && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400 w-16">Exp.:</span>
+                                    <span className="font-semibold text-slate-700">{oferta.experiencia_requerida}</span>
+                                </div>
+                            )}
+                            {oferta.categoria && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400 w-16">Área:</span>
+                                    <span className="font-semibold text-slate-700">{oferta.categoria}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Brecha y Recomendación */}
+                    {(oferta.brecha_principal || oferta.recomendacion) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                            {oferta.brecha_principal && (
+                                <div className="bg-rose-50/60 border border-rose-100 rounded-lg p-3 text-xs text-rose-900">
+                                    <span className="font-bold text-rose-700 text-[11px] uppercase tracking-wider block mb-1">Brecha principal</span>
+                                    <p className="leading-relaxed">{oferta.brecha_principal}</p>
+                                </div>
+                            )}
+                            {oferta.recomendacion && (
+                                <div className="bg-blue-50/60 border border-blue-100 rounded-lg p-3 text-xs text-blue-900">
+                                    <span className="font-bold text-blue-700 text-[11px] uppercase tracking-wider block mb-1">Recomendación IA</span>
+                                    <p className="leading-relaxed">{oferta.recomendacion}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+        </article>
     );
 }
