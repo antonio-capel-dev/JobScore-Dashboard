@@ -57,7 +57,10 @@ export async function guardarOferta(offer: ParsedOffer, scoring: ScoringResult) 
 }
 
 export async function obtenerOfertas() {
-    const { data, error } = await supabase.from('offers').select("*");
+    const { data, error } = await supabase
+        .from('offers')
+        .select("*")
+        .order('fecha_publicacion', { ascending: false, nullsFirst: false });
 
     if (error) {
         console.log('Error buscando ofertas:', error);

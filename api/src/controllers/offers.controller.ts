@@ -30,6 +30,17 @@ function obtenerRutaCsv(fuente: string): string | null {
         if (fs.existsSync(rutaOpenClaw)) {
             return rutaOpenClaw;
         }
+        // Buscar el CSV más reciente en scraper/output
+        const dirOutput = '../scraper/output';
+        if (fs.existsSync(dirOutput)) {
+            const archivos = fs.readdirSync(dirOutput)
+                .filter(f => f.startsWith('ofertas_') && f.endsWith('.csv'))
+                .sort()
+                .reverse();
+            if (archivos.length > 0) {
+                return `${dirOutput}/${archivos[0]}`;
+            }
+        }
         return '../scraper/output/ofertas_2026-07-01.csv';
     }
 

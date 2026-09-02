@@ -126,6 +126,7 @@ function App() {
   const [modalidadSeleccionada, setModalidadSeleccionada] = useState('todas');
   const [estadoSeleccionado, setEstadoSeleccionado] = useState('todos');
   const [scoreMinimo, setScoreMinimo] = useState(0);
+  const [ordenSeleccionado, setOrdenSeleccionado] = useState<'recientes' | 'score' | 'antiguas'>('recientes');
   const [vistaActual, setVistaActual] = useState<'lista' | 'kanban'>('lista');
 
   // Escuchar el estado de autenticación
@@ -165,11 +166,11 @@ function App() {
     return { total, topMatches, postuladas, enEntrevista, salarioPromedio };
   }, [ofertas]);
 
-  // Filtrado de ofertas
+  // Filtrado y Ordenación de ofertas
   const ofertasFiltradas = useMemo(() => {
     const q = busquedaTexto.toLowerCase().trim();
 
-    return ofertas.filter((oferta) => {
+    const filtradas = ofertas.filter((oferta) => {
       // Filtro Modalidad
       const matchModalidad = modalidadSeleccionada === 'todas' || oferta.modalidad === modalidadSeleccionada;
       
@@ -192,7 +193,18 @@ function App() {
 
       return matchModalidad && matchScore && matchEstado && matchTexto;
     });
-  }, [ofertas, busquedaTexto, modalidadSeleccionada, estadoSeleccionado, scoreMinimo]);
+
+    return filtradas.sort((a, b) => {
+      if (ordenSeleccionado === 'score') {
+        return b.score - a.score;
+      }
+      if (ordenSeleccionado === 'antiguas') {
+        return new Date(a.fecha_publicacion || a.fecha_scrape || 0).getTime() - new Date(b.fecha_publicacion || b.fecha_scrape || 0).getTime();
+      }
+      // 'recientes' por defecto (más nuevas arriba)
+      return new Date(b.fecha_publicacion || b.fecha_scrape || 0).getTime() - new Date(a.fecha_publicacion || a.fecha_scrape || 0).getTime();
+    });
+  }, [ofertas, busquedaTexto, modalidadSeleccionada, estadoSeleccionado, scoreMinimo, ordenSeleccionado]);
 
   // Datos para gráficas
   const datosModalidad = [
@@ -214,6 +226,7 @@ function App() {
     setModalidadSeleccionada('todas');
     setEstadoSeleccionado('todos');
     setScoreMinimo(0);
+    setOrdenSeleccionado('recientes');
   };
 
   // Si no está autenticado, mostramos la pantalla de login
@@ -361,7 +374,7 @@ function App() {
           </div>
 
           {/* Segunda fila de filtros */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-slate-100 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2 border-t border-slate-100 items-end">
             
             {/* Modalidad */}
             <div className="space-y-1">
@@ -381,7 +394,7 @@ function App() {
 
             {/* Estado de Candidatura */}
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-500 uppercase">Fase de Candidatura</label>
+              <label className="text-[11px] font-bold text-slate-500 uppercase">Fase</label>
               <select 
                 value={estadoSeleccionado} 
                 onChange={(e) => setEstadoSeleccionado(e.target.value)}
@@ -396,10 +409,24 @@ function App() {
               </select>
             </div>
 
+            {/* Ordenación */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase">Ordenar por</label>
+              <select 
+                value={ordenSeleccionado} 
+                onChange={(e) => setOrdenSeleccionado(e.target.value as 'recientes' | 'score' | 'antiguas')}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="recientes">📅 Más recientes</option>
+                <option value="score">⭐ Mayor Score</option>
+                <option value="antiguas">⏳ Más antiguas</option>
+              </select>
+            </div>
+
             {/* Score Mínimo */}
             <div className="space-y-1">
               <div className="flex justify-between items-center text-[11px]">
-                <label className="font-bold text-slate-500 uppercase">Score mínimo</label>
+                <label className="font-bold text-slate-500 uppercase">Score mín.</label>
                 <span className={`font-black px-2 py-0.5 rounded text-xs ${
                   scoreMinimo >= 75 ? 'bg-emerald-100 text-emerald-800' :
                   scoreMinimo >= 45 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
@@ -421,9 +448,9 @@ function App() {
             <div>
               <button
                 onClick={restablecerFiltros}
-                className="w-full py-2 px-4 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold text-xs transition-colors"
+                className="w-full py-2 px-3 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold text-xs transition-colors"
               >
-                ↺ Restablecer filtros
+                ↺ Restablecer
               </button>
             </div>
 
