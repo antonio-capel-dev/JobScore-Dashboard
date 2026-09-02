@@ -92,11 +92,13 @@ export async function procesarFuente(fuente: 'adzuna' | 'tecnoempleo', limit?: n
 
             const ofertaScored = await scoreOffer(offer);
             resultados.push(ofertaScored);
-            await guardarOferta(offer, ofertaScored);
 
-            // Alerta por Telegram si cumple el corte
-            if (ofertaScored.veredicto === 'Si' || ofertaScored.veredicto === 'Quizas') {
+            // Criterio de calidad: solo guardamos en Supabase si encaja con el stack del candidato (Score >= 45 y veredicto != 'No')
+            if (ofertaScored.score >= 45 && ofertaScored.veredicto !== 'No') {
+                await guardarOferta(offer, ofertaScored);
                 await sendOfferNotification(offer, ofertaScored);
+            } else {
+                console.log(`[Pipeline] Oferta descartada por afinidad insuficiente (${ofertaScored.score} pts): ${offer.titulo_puesto}`);
             }
 
             // Pausa preventiva de 1.5s contra rate limit de OpenRouter
