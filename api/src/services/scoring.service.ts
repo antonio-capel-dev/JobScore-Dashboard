@@ -30,6 +30,7 @@ export function construirPrompt(offer: ParsedOffer): string {
     Perfil del candidato:
     - Puesto objetivo: Junior Full-Stack Web Developer
     - Tecnologías que domina: JavaScript ES6+, React, Astro, TypeScript, HTML, CSS, Tailwind, Material-UI, WordPress, PHP 8+, MySQL, Node.js, Supabase (PostgreSQL), APIs REST, Git, Docker (básico). Python básico (en consolidación). En construcción: LLMs, RAG/LangChain, FastAPI, SQL avanzado, Azure, Power BI.
+    - Habilidades blandas: Comunicación efectiva, Trabajo en equipo y colaboración, Resolución de problemas / Pensamiento crítico, Adaptabilidad y flexibilidad, Proactividad e iniciativa, Orientación a resultados.
     Si una oferta requiere como requisito clave una tecnología que el candidato tiene "en construcción" y no domina, o una tecnología que no posee, el score debe tender a "No" o "Quizas" (puntuación menor de 45).
     
     OFERTA A EVALUAR:
