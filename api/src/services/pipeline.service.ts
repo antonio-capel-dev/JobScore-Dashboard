@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import { parseOffersCsv } from "./csvImport.service";
+import { parseOffersCsv, parseOffersCsvFromText } from "./csvImport.service";
 import { scoreOffer, ScoringResult } from "./scoring.service";
 import { sendOfferNotification } from "./telegram.service";
 import { existeOfertaPorUrl, guardarOferta } from "../db/offers.repository";
@@ -143,5 +143,44 @@ export async function ejecutarPipelineCompleto() {
         adzuna: resAdzuna,
         tecnoempleo: resTecnoempleo,
         timestamp: new Date().toISOString()
+    };
+}
+
+export async function procesarTextoCsv(contenidoCsv: string): Promise<ProcessSourceResult> {
+    const ofertasAProcesar = parseOffersCsvFromText(contenidoCsv);
+    console.log(`[Pipeline] Procesando ${ofertasAProcesar.length} ofertas recibidas por subida directa CSV`);
+
+    const resultados: ScoringResult[] = [];
+    let omitidas = 0;
+
+    for (const offer of ofertasAProcesar) {
+        try {
+            const yaExiste = await existeOfertaPorUrl(offer.url_oferta);
+            if (yaExiste) {
+                omitidas++;
+                continue;
+            }
+
+            const ofertaScored = await scoreOffer(offer);
+            resultados.push(ofertaScored);
+
+            if (ofertaScored.score >= 45 && ofertaScored.veredicto !== 'No') {
+                await guardarOferta(offer, ofertaScored);
+                await sendOfferNotification(offer, ofertaScored);
+            } else {
+                console.log(`[Pipeline] Oferta descartada por afinidad insuficiente (${ofertaScored.score} pts): ${offer.titulo_puesto}`);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        } catch (error) {
+            console.error(`[Pipeline] Error procesando oferta subida:`, error);
+        }
+    }
+
+    return {
+        total: ofertasAProcesar.length,
+        puntuadas: resultados.length,
+        omitidas,
+        resultados
     };
 }

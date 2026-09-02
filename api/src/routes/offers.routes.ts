@@ -4,12 +4,14 @@ import {
     getOffers, 
     importOffers, 
     triggerPipeline,
-    purgeLowScoreOffers 
+    purgeLowScoreOffers,
+    uploadOffersCsv 
 } from "../controllers/offers.controller";
 
 const router = Router();
 
 router.post('/pipeline/run', triggerPipeline);
+router.post('/offers/upload', uploadOffersCsv);
 router.delete('/offers/purge', purgeLowScoreOffers);
 router.post('/offers/import/:fuente', importOffers);
 router.get('/offers', getOffers);

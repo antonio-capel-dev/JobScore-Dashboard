@@ -1,5 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useOffers } from "./hooks/useOffers";
 import { OfferCard } from "./components/OfferCard";
 import { AuthModal } from "./components/AuthModal";
@@ -129,6 +129,45 @@ function App() {
   const [ordenSeleccionado, setOrdenSeleccionado] = useState<'recientes' | 'score' | 'antiguas'>('recientes');
   const [vistaActual, setVistaActual] = useState<'lista' | 'kanban'>('lista');
 
+  // Estado para subida directa de CSV
+  const [subiendoCsv, setSubiendoCsv] = useState(false);
+  const [mensajeSubida, setMensajeSubida] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSubirArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setSubiendoCsv(true);
+      setMensajeSubida(null);
+      const csvText = await file.text();
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+      const res = await fetch(`${apiUrl}/offers/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csvText })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al procesar el archivo CSV');
+      }
+
+      const data = await res.json();
+      setMensajeSubida(`¡Éxito! Se evaluaron ${data.total} ofertas (${data.puntuadas} con afinidad guardadas en Supabase).`);
+      await recargarOfertas();
+    } catch (err: any) {
+      alert(`Error procesando el archivo CSV: ${err.message}`);
+    } finally {
+      setSubiendoCsv(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   // Escuchar el estado de autenticación
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -257,6 +296,27 @@ function App() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* Input oculto y botón para subir CSV directamente */}
+            <input 
+              type="file" 
+              accept=".csv" 
+              ref={fileInputRef} 
+              onChange={handleSubirArchivo} 
+              className="hidden" 
+            />
+            
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={subiendoCsv}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-xs disabled:opacity-50"
+              title="Selecciona un archivo CSV de ofertas desde tu ordenador"
+            >
+              <svg className={`w-3.5 h-3.5 ${subiendoCsv ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>{subiendoCsv ? 'Procesando ofertas...' : '📁 Subir CSV'}</span>
+            </button>
+
             <button
               onClick={() => recargarOfertas()}
               disabled={cargando}
@@ -284,6 +344,19 @@ function App() {
             </button>
           </div>
         </header>
+
+        {/* Banner de confirmación de subida */}
+        {mensajeSubida && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-2xs">
+            <span>{mensajeSubida}</span>
+            <button 
+              onClick={() => setMensajeSubida(null)}
+              className="text-emerald-600 hover:text-emerald-900 font-bold ml-4"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* 2. Tarjetas de KPIs / Métricas Clave */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">

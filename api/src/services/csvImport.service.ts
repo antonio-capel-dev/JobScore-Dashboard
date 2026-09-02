@@ -83,30 +83,34 @@ export function filterOffers(offers: ParsedOffer[]): ParsedOffer[] {
     return filteredOffers;
 }
 
-export function parseOffersCsv(filePath: string): ParsedOffer[] {
-    const contenido = fs.readFileSync(filePath, 'utf-8');
+export function parseOffersCsvFromText(contenido: string): ParsedOffer[] {
     const filas = parse(contenido, {
         columns: true,
         skip_empty_lines: true,
         bom: true,
     });
     const parsedOffers = filas.map((fila: any) => ({
-        fecha_scrape: fila.fecha_scrape,
-        fecha_publicacion: normalizarFechaPublicacion(fila.fecha_publicacion, fila.fuente),
-        fuente: fila.fuente,
+        fecha_scrape: fila.fecha_scrape || new Date().toISOString().split('T')[0],
+        fecha_publicacion: normalizarFechaPublicacion(fila.fecha_publicacion || new Date().toISOString().split('T')[0], fila.fuente),
+        fuente: fila.fuente || 'CSV Subido',
         encaja_perfil: fila.encaja_perfil,
-        empresa: fila.empresa,
-        titulo_puesto: fila.titulo_puesto,
-        categoria: fila.categoria as 'IA' | 'WEB',
-        ubicacion: fila.ubicacion,
-        modalidad: fila.modalidad,
-        salario_min: fila.salario_min === '' ? null : Number(fila.salario_min),
-        salario_max: fila.salario_max === '' ? null : Number(fila.salario_max),
+        empresa: fila.empresa || 'Empresa confidencial',
+        titulo_puesto: fila.titulo_puesto || 'Puesto no especificado',
+        categoria: (fila.categoria as 'IA' | 'WEB') || 'WEB',
+        ubicacion: fila.ubicacion || 'España',
+        modalidad: fila.modalidad || 'no especificado',
+        salario_min: fila.salario_min === '' || fila.salario_min === undefined ? null : Number(fila.salario_min),
+        salario_max: fila.salario_max === '' || fila.salario_max === undefined ? null : Number(fila.salario_max),
         experiencia_requerida: fila.experiencia_requerida === '' ? null : fila.experiencia_requerida,
         stack_tecnologico: fila.stack_tecnologico ? fila.stack_tecnologico.split(',').map((s: string) => s.trim()) : [],
-        nivel_ingles: fila.nivel_ingles,
-        url_oferta: fila.url_oferta,
+        nivel_ingles: fila.nivel_ingles || 'no especificado',
+        url_oferta: fila.url_oferta || `https://oferta-${Date.now()}-${Math.random()}`,
     }));
 
     return filterOffers(parsedOffers);
+}
+
+export function parseOffersCsv(filePath: string): ParsedOffer[] {
+    const contenido = fs.readFileSync(filePath, 'utf-8');
+    return parseOffersCsvFromText(contenido);
 }
