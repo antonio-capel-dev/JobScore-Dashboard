@@ -37,6 +37,7 @@ def buscar_ofertas(termino: str, categoria: str, paginas:int = 3) -> list[dict]:
                     "app_key": APP_KEY,
                     "results_per_page": 10,
                     "what": termino, 
+                    "max_days_old": 30, # Solo ofertas de los últimos 30 días
                      }
         respuesta = requests.get(url, params=params) 
         datos = respuesta.json()
