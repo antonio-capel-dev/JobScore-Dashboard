@@ -243,11 +243,11 @@ function App() {
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-blue-200">
-                JS
+                AC
               </div>
               <div>
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                  JobScore Dashboard
+                  Buscador de Empleo de Antonio Capel
                 </h1>
                 <p className="text-xs font-medium text-slate-500">
                   Panel de Análisis y Seguimiento de Candidaturas Tech
