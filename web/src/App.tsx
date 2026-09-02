@@ -1,19 +1,136 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
-import { useState, useEffect } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { useState, useEffect, useMemo } from "react";
 import { useOffers } from "./hooks/useOffers";
 import { OfferCard } from "./components/OfferCard";
 import { AuthModal } from "./components/AuthModal";
 import { supabase } from "./api/supabaseClient";
 import type { Session } from "@supabase/supabase-js";
+import type { Offer } from "./types/offer";
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm space-y-4 animate-pulse">
+      <div className="flex justify-between items-start">
+        <div className="space-y-2 flex-1">
+          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-100 rounded w-1/2"></div>
+        </div>
+        <div className="w-16 h-12 bg-gray-200 rounded-2xl"></div>
+      </div>
+      <div className="h-20 bg-gray-100 rounded-xl"></div>
+      <div className="flex justify-between items-center pt-2">
+        <div className="h-8 bg-gray-200 rounded-xl w-32"></div>
+        <div className="h-8 bg-gray-200 rounded-xl w-36"></div>
+      </div>
+    </div>
+  );
+}
+
+function KanbanColumn({ 
+  titulo, 
+  fase, 
+  ofertas, 
+  onCambiarEstado, 
+  badgeColor 
+}: { 
+  titulo: string; 
+  fase: Offer['estado_candidatura']; 
+  ofertas: Offer[]; 
+  onCambiarEstado: (id: number, nuevoEstado: Offer['estado_candidatura']) => void;
+  badgeColor: string;
+}) {
+  return (
+    <div className="bg-slate-50/70 rounded-2xl border border-slate-200/70 p-4 flex flex-col min-h-[450px]">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${badgeColor}`}></span>
+          <h3 className="font-bold text-slate-800 text-sm">{titulo}</h3>
+        </div>
+        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white text-slate-600 border border-slate-200 shadow-2xs">
+          {ofertas.length}
+        </span>
+      </div>
+
+      <div className="space-y-3 overflow-y-auto max-h-[700px] pr-1">
+        {ofertas.length === 0 ? (
+          <div className="text-center py-8 text-xs text-slate-400 font-medium">
+            Sin ofertas en esta fase
+          </div>
+        ) : (
+          ofertas.map((oferta) => (
+            <div 
+              key={oferta.id} 
+              className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all space-y-2.5"
+            >
+              <div className="flex justify-between items-start gap-2">
+                <span className="text-xs font-bold text-slate-900 leading-tight line-clamp-2">
+                  {oferta.titulo_puesto}
+                </span>
+                <span className={`px-2 py-0.5 rounded-lg text-xs font-black shrink-0 ${
+                  oferta.score >= 70 ? 'bg-emerald-100 text-emerald-800' :
+                  oferta.score >= 40 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+                }`}>
+                  {oferta.score}
+                </span>
+              </div>
+
+              <div className="text-[11px] text-slate-500 font-medium flex items-center justify-between">
+                <span>{oferta.empresa}</span>
+                <span className="capitalize">{oferta.modalidad}</span>
+              </div>
+
+              {oferta.brecha_principal && (
+                <p className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 line-clamp-2">
+                  <strong className="text-slate-700">Brecha:</strong> {oferta.brecha_principal}
+                </p>
+              )}
+
+              <div className="pt-1 flex items-center justify-between gap-1 border-t border-slate-100 text-[11px]">
+                <select
+                  value={oferta.estado_candidatura ?? ''}
+                  onChange={(e) => {
+                    const nuevo = e.target.value === '' ? null : e.target.value as Offer['estado_candidatura'];
+                    onCambiarEstado(oferta.id, nuevo);
+                  }}
+                  className="px-2 py-1 border border-slate-200 rounded-lg text-[11px] font-semibold bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Sin postular</option>
+                  <option value="enviada">Enviada</option>
+                  <option value="respuesta">Respuesta</option>
+                  <option value="entrevista">Entrevista</option>
+                  <option value="oferta">Oferta</option>
+                </select>
+
+                <a 
+                  href={oferta.url_oferta} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-0.5"
+                >
+                  Ver ↗
+                </a>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 
 function App() {
-  const { offers: ofertas, actualizarEstadoOferta } = useOffers();
+  const { offers: ofertas, cargando, recargarOfertas, actualizarEstadoOferta } = useOffers();
   const [session, setSession] = useState<Session | null>(null);
+  
+  // Filtros
+  const [busquedaTexto, setBusquedaTexto] = useState('');
   const [modalidadSeleccionada, setModalidadSeleccionada] = useState('todas');
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState('todos');
   const [scoreMinimo, setScoreMinimo] = useState(0);
-  const [ubicacionBuscada, setUbicacionBuscada] = useState('');
+  const [vistaActual, setVistaActual] = useState<'lista' | 'kanban'>('lista');
 
-  // 1. Escuchar el estado de autenticación
+  // Escuchar el estado de autenticación
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -28,16 +145,63 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const ofertasFiltradas = ofertas.filter((oferta) => 
-    (modalidadSeleccionada === 'todas' || oferta.modalidad === modalidadSeleccionada) && 
-    oferta.score >= scoreMinimo && 
-    oferta.ubicacion.toLowerCase().includes(ubicacionBuscada.toLowerCase())
-  ); 
+  // Métricas calculadas (KPIs)
+  const estadisticas = useMemo(() => {
+    const total = ofertas.length;
+    const topMatches = ofertas.filter(o => o.score >= 75).length;
+    const postuladas = ofertas.filter(o => o.estado_candidatura !== null && o.estado_candidatura !== undefined).length;
+    const enEntrevista = ofertas.filter(o => o.estado_candidatura === 'entrevista' || o.estado_candidatura === 'oferta').length;
+    
+    // Calcular salario medio anual de las ofertas que lo incluyen
+    const conSalario = ofertas.filter(o => o.salario_min || o.salario_max);
+    let salarioPromedio = 0;
+    if (conSalario.length > 0) {
+      const suma = conSalario.reduce((acc, curr) => {
+        const min = curr.salario_min || curr.salario_max || 0;
+        const max = curr.salario_max || curr.salario_min || 0;
+        return acc + (min + max) / 2;
+      }, 0);
+      salarioPromedio = Math.round(suma / conSalario.length);
+    }
 
+    return { total, topMatches, postuladas, enEntrevista, salarioPromedio };
+  }, [ofertas]);
+
+  // Filtrado de ofertas
+  const ofertasFiltradas = useMemo(() => {
+    const q = busquedaTexto.toLowerCase().trim();
+
+    return ofertas.filter((oferta) => {
+      // Filtro Modalidad
+      const matchModalidad = modalidadSeleccionada === 'todas' || oferta.modalidad === modalidadSeleccionada;
+      
+      // Filtro Score
+      const matchScore = oferta.score >= scoreMinimo;
+      
+      // Filtro Estado
+      const matchEstado = 
+        estadoSeleccionado === 'todos' ? true :
+        estadoSeleccionado === 'sin_postular' ? !oferta.estado_candidatura :
+        oferta.estado_candidatura === estadoSeleccionado;
+
+      // Filtro Texto (busca en título, empresa, ubicación y tecnologías del stack)
+      const matchTexto = !q || (
+        oferta.titulo_puesto.toLowerCase().includes(q) ||
+        oferta.empresa.toLowerCase().includes(q) ||
+        oferta.ubicacion.toLowerCase().includes(q) ||
+        oferta.stack_tecnologico.some(t => t.toLowerCase().includes(q))
+      );
+
+      return matchModalidad && matchScore && matchEstado && matchTexto;
+    });
+  }, [ofertas, busquedaTexto, modalidadSeleccionada, estadoSeleccionado, scoreMinimo]);
+
+  // Datos para gráficas
   const datosModalidad = [
     { modalidad: 'Remoto', cantidad: ofertas.filter(oferta => oferta.modalidad === 'remoto').length },
     { modalidad: 'Híbrido', cantidad: ofertas.filter(oferta => oferta.modalidad === 'hibrido').length },
-    { modalidad: 'No especificado', cantidad: ofertas.filter(oferta => oferta.modalidad === 'no especificado').length },
+    { modalidad: 'Presencial', cantidad: ofertas.filter(oferta => oferta.modalidad === 'presencial').length },
+    { modalidad: 'No espec.', cantidad: ofertas.filter(oferta => oferta.modalidad === 'no especificado' || !oferta.modalidad).length },
   ];
 
   const datosEmbudo = [
@@ -47,132 +211,340 @@ function App() {
     { fase: 'Oferta', cantidad: ofertas.filter(oferta => oferta.estado_candidatura === 'oferta').length }
   ];
 
+  const restablecerFiltros = () => {
+    setBusquedaTexto('');
+    setModalidadSeleccionada('todas');
+    setEstadoSeleccionado('todos');
+    setScoreMinimo(0);
+  };
+
   // Si no está autenticado, mostramos la pantalla de login
   if (!session) {
     return <AuthModal />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 md:p-10">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-50/60 p-4 md:p-8 text-slate-900">
+      <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* 1. Header con datos del Usuario y Logout */}
-        <header className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">JobScore Dashboard</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Analizador inteligente de ofertas de empleo
-            </p>
+        {/* 1. Header Ejecutivo */}
+        <header className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-blue-200">
+                JS
+              </div>
+              <div>
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+                  JobScore Dashboard
+                </h1>
+                <p className="text-xs font-medium text-slate-500">
+                  Panel de Análisis y Seguimiento de Candidaturas Tech
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => recargarOfertas()}
+              disabled={cargando}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors disabled:opacity-50"
+              title="Actualizar datos desde la API"
+            >
+              <svg className={`w-3.5 h-3.5 ${cargando ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>{cargando ? 'Cargando...' : 'Sincronizar'}</span>
+            </button>
+
+            <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
+
             <div className="text-right">
-              <span className="text-xs text-gray-400 block font-medium">Sesión activa:</span>
-              <span className="text-sm font-semibold text-gray-700">{session.user.email}</span>
+              <span className="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Candidato</span>
+              <span className="text-xs font-bold text-slate-700">{session.user.email}</span>
             </div>
 
             <button
               onClick={() => supabase.auth.signOut()}
-              className="px-3.5 py-2 rounded-xl bg-gray-200 hover:bg-rose-100 text-gray-700 hover:text-rose-700 font-semibold text-xs transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors border border-rose-100"
             >
-              Cerrar sesión
+              Salir
             </button>
           </div>
         </header>
 
-        {/* 2. Barra de Filtros */}
-        <section className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-6 items-center justify-between">
-          <div className="flex flex-wrap items-center gap-4 flex-1">
-            <div className="flex flex-col gap-1 min-w-[200px]">
-              <label className="text-xs font-medium text-gray-500 uppercase">Ubicación</label>
+        {/* 2. Tarjetas de KPIs / Métricas Clave */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Ofertas</span>
+            <div className="text-3xl font-black text-slate-900">{estadisticas.total}</div>
+            <p className="text-[11px] text-slate-500">Extraídas y evaluadas con IA</p>
+          </div>
+
+          <div 
+            onClick={() => setScoreMinimo(75)}
+            className="bg-white p-5 rounded-2xl border border-emerald-200/80 shadow-xs space-y-1 cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all group"
+            title="Haz clic para filtrar solo las mejores"
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Top Match (≥75)</span>
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded group-hover:bg-emerald-600 group-hover:text-white transition-colors">Filtrar</span>
+            </div>
+            <div className="text-3xl font-black text-emerald-600">{estadisticas.topMatches}</div>
+            <p className="text-[11px] text-slate-500">Alta afinidad con tu perfil</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-blue-200/80 shadow-xs space-y-1">
+            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Postulaciones</span>
+            <div className="text-3xl font-black text-blue-600">{estadisticas.postuladas}</div>
+            <p className="text-[11px] text-slate-500">{estadisticas.enEntrevista} en fases avanzadas</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Salario Promedio</span>
+            <div className="text-3xl font-black text-slate-900">
+              {estadisticas.salarioPromedio > 0 ? `${estadisticas.salarioPromedio.toLocaleString()}€` : 'N/A'}
+            </div>
+            <p className="text-[11px] text-slate-500">Media del mercado detectada</p>
+          </div>
+        </section>
+
+        {/* 3. Barra de Control y Filtros Inteligentes */}
+        <section className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+            
+            {/* Buscador de Texto Libre */}
+            <div className="relative flex-1">
+              <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
               <input
                 type="text"
-                placeholder="Buscar por ciudad..."
-                value={ubicacionBuscada}
-                onChange={(e) => setUbicacionBuscada(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                placeholder="Buscar por puesto, empresa, stack (ej. React, Python) o ciudad..."
+                value={busquedaTexto}
+                onChange={(e) => setBusquedaTexto(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
               />
+              {busquedaTexto && (
+                <button 
+                  onClick={() => setBusquedaTexto('')} 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
-            <div className="flex flex-col gap-1 min-w-[180px]">
-              <label className="text-xs font-medium text-gray-500 uppercase">Modalidad</label>
+            {/* Selector de Vistas: Lista vs Tablero */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0 self-start lg:self-auto">
+              <button
+                onClick={() => setVistaActual('lista')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  vistaActual === 'lista'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                ≡ Lista Detallada
+              </button>
+              <button
+                onClick={() => setVistaActual('kanban')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  vistaActual === 'kanban'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                ▦ Tablero Embudo
+              </button>
+            </div>
+
+          </div>
+
+          {/* Segunda fila de filtros */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-slate-100 items-end">
+            
+            {/* Modalidad */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase">Modalidad</label>
               <select 
                 value={modalidadSeleccionada} 
                 onChange={(e) => setModalidadSeleccionada(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="todas">Todas</option>
-                <option value="remoto">Remoto</option>
+                <option value="todas">Todas las modalidades</option>
+                <option value="remoto">100% Remoto</option>
                 <option value="hibrido">Híbrido</option>
+                <option value="presencial">Presencial</option>
                 <option value="no especificado">No especificado</option>
               </select>
             </div>
-          </div>
 
-          <div className="flex flex-col gap-1 min-w-[200px]">
-            <div className="flex justify-between items-center">
-              <label className="text-xs font-medium text-gray-500 uppercase">Score mínimo</label>
-              <span className="text-sm font-bold text-blue-600">{scoreMinimo} pts</span>
+            {/* Estado de Candidatura */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase">Fase de Candidatura</label>
+              <select 
+                value={estadoSeleccionado} 
+                onChange={(e) => setEstadoSeleccionado(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="todos">Todos los estados</option>
+                <option value="sin_postular">Sin postular</option>
+                <option value="enviada">Enviada</option>
+                <option value="respuesta">Con Respuesta</option>
+                <option value="entrevista">En Entrevista</option>
+                <option value="oferta">Oferta Recibida</option>
+              </select>
             </div>
-            <input 
-              type="range" 
-              min="0" 
-              max="100" 
-              value={scoreMinimo} 
-              onChange={(e) => setScoreMinimo(Number(e.target.value))}
-              className="w-full accent-blue-600 cursor-pointer"
-            />
-          </div>
-        </section>
 
-        {/* 3. Panel de Gráficas (2 columnas) */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 w-full text-left">
-              Ofertas por Modalidad
-            </h2>
-            <BarChart width={400} height={250} data={datosModalidad}>
-              <XAxis dataKey="modalidad" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="cantidad" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 w-full text-left">
-              Embudo de Candidaturas
-            </h2>
-            <BarChart width={400} height={250} data={datosEmbudo}>
-              <XAxis dataKey="fase" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="cantidad" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </div>
-        </section>
-
-        {/* 4. Lista de Ofertas */}
-        <section className="space-y-4">
-          <h2 className="text-xl font-bold text-gray-800">
-            Ofertas Filtradas ({ofertasFiltradas.length})
-          </h2>
-
-          <div className="space-y-3">
-            {ofertasFiltradas.length > 0 ? (
-              ofertasFiltradas.map((oferta) => (
-                <OfferCard 
-                  key={oferta.id} 
-                  oferta={oferta} 
-                  onCambiarEstado={actualizarEstadoOferta}
-                />
-              ))
-            ) : (
-              <div className="bg-white p-8 text-center rounded-2xl border border-gray-100 text-gray-500">
-                No hay ofertas que coincidan con los filtros.
+            {/* Score Mínimo */}
+            <div className="space-y-1">
+              <div className="flex justify-between items-center text-[11px]">
+                <label className="font-bold text-slate-500 uppercase">Score mínimo</label>
+                <span className={`font-black px-2 py-0.5 rounded text-xs ${
+                  scoreMinimo >= 75 ? 'bg-emerald-100 text-emerald-800' :
+                  scoreMinimo >= 45 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+                }`}>
+                  {scoreMinimo} pts
+                </span>
               </div>
-            )}
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value={scoreMinimo} 
+                onChange={(e) => setScoreMinimo(Number(e.target.value))}
+                className="w-full accent-blue-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
+              />
+            </div>
+
+            {/* Botón Restablecer */}
+            <div>
+              <button
+                onClick={restablecerFiltros}
+                className="w-full py-2 px-4 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold text-xs transition-colors"
+              >
+                ↺ Restablecer filtros
+              </button>
+            </div>
+
           </div>
+        </section>
+
+        {/* 4. Gráficas de Análisis (Colapsables / Responsive) */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+              Distribución por Modalidad
+            </h2>
+            <div className="h-60 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={datosModalidad} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="modalidad" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
+                  <Bar dataKey="cantidad" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
+            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+              Embudo de Candidaturas Activas
+            </h2>
+            <div className="h-60 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={datosEmbudo} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis dataKey="fase" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
+                  <Bar dataKey="cantidad" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </section>
+
+        {/* 5. Contenido Principal: Lista Detallada o Tablero Embudo */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <span>{vistaActual === 'lista' ? 'Listado de Ofertas' : 'Tablero de Candidaturas'}</span>
+              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
+                {ofertasFiltradas.length} encontradas
+              </span>
+            </h2>
+          </div>
+
+          {cargando ? (
+            <div className="space-y-4">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          ) : vistaActual === 'lista' ? (
+            <div className="space-y-4">
+              {ofertasFiltradas.length > 0 ? (
+                ofertasFiltradas.map((oferta) => (
+                  <OfferCard 
+                    key={oferta.id} 
+                    oferta={oferta} 
+                    onCambiarEstado={actualizarEstadoOferta}
+                  />
+                ))
+              ) : (
+                <div className="bg-white p-12 text-center rounded-3xl border border-slate-200 text-slate-500 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 mx-auto flex items-center justify-center text-xl">
+                    🔍
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-base">No hay ofertas que coincidan con estos filtros</h3>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Prueba a reducir el score mínimo o restablecer los términos de búsqueda.
+                  </p>
+                  <button
+                    onClick={restablecerFiltros}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                  >
+                    Ver todas las ofertas
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Vista Tablero Kanban */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <KanbanColumn 
+                titulo="Sin postular" 
+                fase={null} 
+                ofertas={ofertasFiltradas.filter(o => !o.estado_candidatura)} 
+                onCambiarEstado={actualizarEstadoOferta}
+                badgeColor="bg-slate-400"
+              />
+              <KanbanColumn 
+                titulo="Enviadas" 
+                fase="enviada" 
+                ofertas={ofertasFiltradas.filter(o => o.estado_candidatura === 'enviada')} 
+                onCambiarEstado={actualizarEstadoOferta}
+                badgeColor="bg-blue-500"
+              />
+              <KanbanColumn 
+                titulo="Con Respuesta / Entrevista" 
+                fase="entrevista" 
+                ofertas={ofertasFiltradas.filter(o => o.estado_candidatura === 'respuesta' || o.estado_candidatura === 'entrevista')} 
+                onCambiarEstado={actualizarEstadoOferta}
+                badgeColor="bg-purple-500"
+              />
+              <KanbanColumn 
+                titulo="Oferta Recibida" 
+                fase="oferta" 
+                ofertas={ofertasFiltradas.filter(o => o.estado_candidatura === 'oferta')} 
+                onCambiarEstado={actualizarEstadoOferta}
+                badgeColor="bg-emerald-500"
+              />
+            </div>
+          )}
         </section>
 
       </div>
