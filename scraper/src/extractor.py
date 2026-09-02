@@ -8,46 +8,62 @@ load_dotenv()
 APP_ID = os.getenv("ADZUNA_APP_ID")
 APP_KEY = os.getenv("ADZUNA_APP_KEY")
 
-
+# Búsquedas enfocadas a vacantes Junior / Entry-level alineadas con el CV de Antonio
 BUSQUEDAS = {
-    "IA": ["machine learning", "data scientist", "AI engineer", "artificial intelligence"],
-
-    "WEB": ["web developer", "full stack developer", "frontend developer", "backend developer"]
+    "WEB": [
+        "junior developer",
+        "desarrollador junior",
+        "programador junior",
+        "junior frontend",
+        "junior full stack",
+        "junior react",
+        "junior javascript",
+        "desarrollador react",
+        "desarrollador php",
+        "trainee developer",
+        "practicas desarrollador"
+    ],
+    "IA": [
+        "junior python",
+        "junior data",
+        "junior inteligencia artificial",
+        "practicas IA"
+    ]
 }
 
-def buscar_ofertas(termino: str, categoria: str, paginas:int = 3) -> list[dict]:
-
+def buscar_ofertas(termino: str, categoria: str, paginas: int = 2) -> list[dict]:
     """
     Llama a la API de Adzuna y devuelve ofertas para un término de búsqueda.
-
-    Args:
-        termino: Palabra o frase clave de búsqueda.
-        categoria: Etiqueta de categoría ('IA' o 'WEB').
-        paginas: Número de páginas a solicitar (10 resultados por página).
-
-    Returns:
-        Lista de diccionarios, cada uno con los campos del esquema.
     """
-
     resultados = []
 
-    for pagina in range(1, paginas +1):
+    for pagina in range(1, paginas + 1):
         url = f"https://api.adzuna.com/v1/api/jobs/es/search/{pagina}"
-        params =  { "app_id": APP_ID,
-                    "app_key": APP_KEY,
-                    "results_per_page": 10,
-                    "what": termino, 
-                    "max_days_old": 30, # Solo ofertas de los últimos 30 días
-                     }
-        respuesta = requests.get(url, params=params) 
-        datos = respuesta.json()
+        params = {
+            "app_id": APP_ID,
+            "app_key": APP_KEY,
+            "results_per_page": 10,
+            "what": termino,
+            "max_days_old": 30, # Solo ofertas de los últimos 30 días
+        }
+        
+        try:
+            respuesta = requests.get(url, params=params, timeout=10)
+            if respuesta.status_code != 200:
+                print(f"Advertencia: Adzuna devolvió status {respuesta.status_code} para '{termino}' (página {pagina})")
+                continue
+            datos = respuesta.json()
+        except Exception as e:
+            print(f"Error consultando Adzuna para '{termino}' (página {pagina}): {e}")
+            continue
+
         ofertas = datos.get("results", [])
         for oferta in ofertas:
             resultados.append({
                 "fecha_scrape": date.today().isoformat(),
                 "fecha_publicacion": oferta.get("created", None),
                 "empresa": oferta.get("company", {}).get("display_name", None),
-                "titulo_puesto": oferta.get("title", None),                           
+                "titulo_puesto": oferta.get("title", None),
                 "categoria": categoria,
                 "ubicacion": oferta.get("location", {}).get("display_name", None),
                 "modalidad": None,
@@ -66,9 +82,6 @@ def buscar_ofertas(termino: str, categoria: str, paginas:int = 3) -> list[dict]:
 def extraer_todas():
     """
     Ejecuta búsquedas para todos los términos del diccionario BUSQUEDAS.
-
-    Returns:
-        Lista combinada con todas las ofertas encontradas.
     """
     todas = []
     for categoria, terminos in BUSQUEDAS.items():
@@ -76,8 +89,9 @@ def extraer_todas():
             resultados = buscar_ofertas(termino, categoria)
             todas.extend(resultados)
     return todas
-if __name__== "__main__":
+
+if __name__ == "__main__":
     resultados = extraer_todas()
     print(f"Total ofertas: {len(resultados)}")
-    print(resultados[0])
-
+    if resultados:
+        print(resultados[0])

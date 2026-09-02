@@ -23,36 +23,62 @@ export function normalizarFechaPublicacion(fecha: string, fuente: string | undef
     if (fuente) {
         const partes = fecha.split('/');
         return `${partes[2]}-${partes[1]}-${partes[0]}`;
-    }
-    else {
+    } else {
         return fecha;
     }
 }
 
-// Nueva función para filtrar ofertas
-function filterOffers(offers: ParsedOffer[]): ParsedOffer[] {
+// Patrones de seniority alto que se descartan automáticamente para candidatos Junior
+const PATRONES_SENIOR = [
+    /\bsenior\b/i,
+    /\bsr\.?\b/i,
+    /\blead\b/i,
+    /\bprincipal\b/i,
+    /\bstaff\b/i,
+    /\barchitect\b/i,
+    /\barquitecto\b/i,
+    /\bmanager\b/i,
+    /\bdirector\b/i,
+    /\bhead of\b/i,
+    /\btech lead\b/i,
+    /\bteam lead\b/i,
+    /5\+?\s*años/i,
+    /\+5\s*años/i,
+    /4\+?\s*años/i,
+    /\+4\s*años/i
+];
+
+export function esOfertaSenior(titulo: string, experiencia: string | null): boolean {
+    const texto = `${titulo} ${experiencia || ''}`.toLowerCase();
+    return PATRONES_SENIOR.some(patron => patron.test(texto));
+}
+
+// Filtro pre-scoring: descarta ofertas no viables antes de llamar al LLM
+export function filterOffers(offers: ParsedOffer[]): ParsedOffer[] {
     const filteredOffers: ParsedOffer[] = [];
     for (const offer of offers) {
-        let keepOffer = true;
+        // 1. Descarte por Seniority: si es Senior/Lead/Architect/5+ años, descartar
+        if (esOfertaSenior(offer.titulo_puesto, offer.experiencia_requerida)) {
+            continue;
+        }
 
-        // 1. Filtro por Ubicación y Modalidad
-        const ubicacionLower = offer.ubicacion.toLowerCase();
-        const modalidadLower = offer.modalidad.toLowerCase();
+        // 2. Filtro por Ubicación y Modalidad (Null-safe)
+        const ubicacionLower = (offer.ubicacion || '').toLowerCase();
+        const modalidadLower = (offer.modalidad || '').toLowerCase();
 
         if (modalidadLower === 'hibrido' || modalidadLower === 'presencial') {
+            // Presencial o híbrido solo si es en Málaga
             if (!ubicacionLower.includes('malaga') && !ubicacionLower.includes('málaga')) {
-                keepOffer = false; // Descartar si es híbrido/presencial y no es Málaga
+                continue;
             }
         }
 
-        // 2. Filtro por Salario Mínimo
-        if (keepOffer && offer.salario_min !== null && offer.salario_min < 10000) {
-            keepOffer = false; // Descartar si el salario mínimo es inferior a 20k
+        // 3. Filtro por Salario Mínimo: si se especifica salario y es inferior a 10.000€
+        if (offer.salario_min !== null && offer.salario_min < 10000) {
+            continue;
         }
 
-        if (keepOffer) {
-            filteredOffers.push(offer);
-        }
+        filteredOffers.push(offer);
     }
     return filteredOffers;
 }
@@ -77,11 +103,10 @@ export function parseOffersCsv(filePath: string): ParsedOffer[] {
         salario_min: fila.salario_min === '' ? null : Number(fila.salario_min),
         salario_max: fila.salario_max === '' ? null : Number(fila.salario_max),
         experiencia_requerida: fila.experiencia_requerida === '' ? null : fila.experiencia_requerida,
-        stack_tecnologico: fila.stack_tecnologico.split(',').map((s: string) => s.trim()),
+        stack_tecnologico: fila.stack_tecnologico ? fila.stack_tecnologico.split(',').map((s: string) => s.trim()) : [],
         nivel_ingles: fila.nivel_ingles,
         url_oferta: fila.url_oferta,
     }));
 
     return filterOffers(parsedOffers);
 }
-
