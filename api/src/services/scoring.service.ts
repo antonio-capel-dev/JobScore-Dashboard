@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { ParsedOffer } from "./csvImport.service";
 
-function extraerJson(content:string):string {
+export function extraerJson(content:string):string {
     const limpio = content.trim();
 
     if (!limpio.startsWith('```')) {
@@ -24,7 +24,7 @@ export interface ScoringResult {
     recomendacion: string
 }
 
-function construirPrompt(offer: ParsedOffer): string {
+export function construirPrompt(offer: ParsedOffer): string {
     return `Eres un asistente que evalúa ofertas de empleo para un desarrollador junior.
     
     Perfil del candidato:
@@ -34,6 +34,7 @@ function construirPrompt(offer: ParsedOffer): string {
     OFERTA A EVALUAR:
     
     - Puesto: ${offer.titulo_puesto}
+    - Empresa: ${offer.empresa}
     - Tecnologías requeridas: ${offer.stack_tecnologico.join(', ')}
     - Experiencia requerida: ${offer.experiencia_requerida ?? 'No especificada'}
     - Modalidad: ${offer.modalidad}
