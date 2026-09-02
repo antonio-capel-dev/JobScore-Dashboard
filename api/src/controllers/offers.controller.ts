@@ -41,7 +41,17 @@ export async function getOffers(req: Request, res: Response) {
 
 export async function updateOfferStatus(req: Request, res: Response) {
     const id = Number(req.params.id);
+    if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ error: "ID de oferta no válido" });
+    }
+
     const estado = req.body.estado_candidatura;
-    await actualizarEstadoCandidatura(id, estado);
+    const estadosValidos = [null, '', 'enviada', 'respuesta', 'entrevista', 'oferta'];
+    if (!estadosValidos.includes(estado)) {
+        return res.status(400).json({ error: "Estado no válido. Usa: enviada, respuesta, entrevista u oferta" });
+    }
+
+    const estadoFinal = estado === '' ? null : estado;
+    await actualizarEstadoCandidatura(id, estadoFinal);
     res.json({ mensaje: 'Estado actualizado' });
 }
