@@ -5,27 +5,19 @@ import { iniciarCronJobs } from './services/cron.service';
 
 const app = express();
 
-const allowedOrigins = [
-    'https://job-score-dashboard-5wux.vercel.app',
-    'http://localhost:5173',
-    'http://localhost:3000'
-];
-
-if (process.env.FRONTEND_URL) {
-    allowedOrigins.push(process.env.FRONTEND_URL);
-}
-
-app.use(cors({
-    origin: (origin, callback) => {
-        // Permitir peticiones sin origin (como curl, Postman o llamadas internas) o de dominios autorizados
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error(`Origen ${origin} no permitido por política CORS`));
-        }
+// Middleware para permitir acceso desde Vercel (HTTPS) a Localhost y habilitar Private Network Access de Chrome
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
     }
-}));
+    next();
+});
 
+app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 const PORT = process.env.PORT || 3000;
 
