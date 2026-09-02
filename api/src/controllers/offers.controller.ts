@@ -4,7 +4,7 @@ import {
     obtenerOfertas,
     purgarOfertasDescartadas 
 } from "../db/offers.repository";
-import { procesarFuente, ejecutarPipelineCompleto } from "../services/pipeline.service";
+import { procesarFuente, ejecutarPipelineCompleto, procesarTextoCsv } from "../services/pipeline.service";
 
 export async function importOffers(req: Request, res: Response) {
     const fuente = req.params.fuente as string;
@@ -21,6 +21,21 @@ export async function importOffers(req: Request, res: Response) {
         res.json(resultado);
     } catch (error: any) {
         console.error(`Error importando ofertas de ${fuente}:`, error.message);
+        res.status(500).json({ error: error.message });
+    }
+}
+
+export async function uploadOffersCsv(req: Request, res: Response) {
+    const { csvText } = req.body;
+    if (!csvText || typeof csvText !== 'string' || !csvText.trim()) {
+        return res.status(400).json({ error: "El contenido del archivo CSV es obligatorio" });
+    }
+
+    try {
+        const resultado = await procesarTextoCsv(csvText);
+        res.json(resultado);
+    } catch (error: any) {
+        console.error("Error procesando CSV subido:", error.message);
         res.status(500).json({ error: error.message });
     }
 }
