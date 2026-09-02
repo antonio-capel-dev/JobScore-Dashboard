@@ -46,7 +46,7 @@ function filterOffers(offers: ParsedOffer[]): ParsedOffer[] {
         }
 
         // 2. Filtro por Salario Mínimo
-        if (keepOffer && offer.salario_min !== null && offer.salario_min < 20000) {
+        if (keepOffer && offer.salario_min !== null && offer.salario_min < 10000) {
             keepOffer = false; // Descartar si el salario mínimo es inferior a 20k
         }
 
