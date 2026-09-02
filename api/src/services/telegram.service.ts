@@ -3,7 +3,7 @@ import { ParsedOffer } from './csvImport.service';
 import { ScoringResult } from './scoring.service';
 
 // Función para evitar que caracteres especiales rompan las etiquetas HTML de Telegram
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
     return text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
