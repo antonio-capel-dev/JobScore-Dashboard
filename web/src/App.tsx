@@ -29,13 +29,11 @@ function SkeletonCard() {
 
 function KanbanColumn({ 
   titulo, 
-  fase, 
   ofertas, 
   onCambiarEstado, 
   badgeColor 
 }: { 
   titulo: string; 
-  fase: Offer['estado_candidatura']; 
   ofertas: Offer[]; 
   onCambiarEstado: (id: number, nuevoEstado: Offer['estado_candidatura']) => void;
   badgeColor: string;
@@ -517,28 +515,24 @@ function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <KanbanColumn 
                 titulo="Sin postular" 
-                fase={null} 
                 ofertas={ofertasFiltradas.filter(o => !o.estado_candidatura)} 
                 onCambiarEstado={actualizarEstadoOferta}
                 badgeColor="bg-slate-400"
               />
               <KanbanColumn 
                 titulo="Enviadas" 
-                fase="enviada" 
                 ofertas={ofertasFiltradas.filter(o => o.estado_candidatura === 'enviada')} 
                 onCambiarEstado={actualizarEstadoOferta}
                 badgeColor="bg-blue-500"
               />
               <KanbanColumn 
                 titulo="Con Respuesta / Entrevista" 
-                fase="entrevista" 
                 ofertas={ofertasFiltradas.filter(o => o.estado_candidatura === 'respuesta' || o.estado_candidatura === 'entrevista')} 
                 onCambiarEstado={actualizarEstadoOferta}
                 badgeColor="bg-purple-500"
               />
               <KanbanColumn 
                 titulo="Oferta Recibida" 
-                fase="oferta" 
                 ofertas={ofertasFiltradas.filter(o => o.estado_candidatura === 'oferta')} 
                 onCambiarEstado={actualizarEstadoOferta}
                 badgeColor="bg-emerald-500"
