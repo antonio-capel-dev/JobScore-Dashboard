@@ -52,6 +52,8 @@ OFERTA A EVALUAR:
 - Modalidad: ${offer.modalidad}
 - Salario: ${offer.salario_min ?? 'N/A'} - ${offer.salario_max ?? 'N/A'}
 - Nivel de inglés requerido: ${offer.nivel_ingles}
+- Descripción completa:
+${offer.description ? offer.description : 'No proporcionada'}
 
 Responde ÚNICAMENTE con un JSON con esta forma exacta, sin texto adicional antes ni después:
 {

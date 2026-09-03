@@ -17,14 +17,22 @@ export async function existeOfertaPorUrl(url: string): Promise<boolean> {
     return data !== null;
 }
 
-export async function actualizarEstadoCandidatura(id: number, estado: string | null) {
+export async function actualizarEstadoCandidatura(id: number, estado?: string | null, notas?: string | null) {
+    const payload: Record<string, any> = {};
+    if (estado !== undefined) {
+        payload.estado_candidatura = estado;
+    }
+    if (notas !== undefined) {
+        payload.notas = notas;
+    }
+
     const { error } = await supabase
         .from('offers')
-        .update({ estado_candidatura: estado })
+        .update(payload)
         .eq('id', id);
 
     if (error) {
-        console.log('Error actualizando estado:', error);
+        console.log('Error actualizando estado/notas:', error);
     }
 }
 

@@ -27,5 +27,10 @@ export function useOffers() {
         setOffers(prev => prev.map(oferta => oferta.id === id ? { ...oferta, estado_candidatura: nuevoEstado } : oferta));
     }
 
-    return { offers, cargando, recargarOfertas, actualizarEstadoOferta };
+    async function actualizarNotasOferta(id: number, notas: string) {
+        await updateOfferStatus(id, undefined, notas);
+        setOffers(prev => prev.map(oferta => oferta.id === id ? { ...oferta, notas } : oferta));
+    }
+
+    return { offers, cargando, recargarOfertas, actualizarEstadoOferta, actualizarNotasOferta };
 }

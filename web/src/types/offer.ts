@@ -20,4 +20,5 @@ export interface Offer {
     recomendacion: string;
     score: number;
     estado_candidatura: null|'enviada'|'respuesta'|'oferta'|'entrevista';
+    notas?: string |null;
 }
