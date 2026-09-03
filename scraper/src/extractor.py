@@ -8,6 +8,8 @@ load_dotenv()
 APP_ID = os.getenv("ADZUNA_APP_ID")
 APP_KEY = os.getenv("ADZUNA_APP_KEY")
 
+
+
 # Búsquedas enfocadas a vacantes Junior / Entry-level alineadas con el CV de Antonio
 BUSQUEDAS = {
     "WEB": [
@@ -18,18 +20,24 @@ BUSQUEDAS = {
         "junior full stack",
         "junior react",
         "junior javascript",
+        "junior typescript",
         "desarrollador react",
         "desarrollador php",
+        "programador php",
+        "desarrollador wordpress",
         "trainee developer",
-        "practicas desarrollador"
+        "practicas desarrollador",
+        "frontend trainee"
     ],
     "IA": [
         "junior python",
         "junior data",
-        "junior inteligencia artificial",
-        "practicas IA"
+        "practicas IA",
+        "junior machine learning",
+        "becario IA"
     ]
 }
+
 
 def buscar_ofertas(termino: str, categoria: str, paginas: int = 2) -> list[dict]:
     """

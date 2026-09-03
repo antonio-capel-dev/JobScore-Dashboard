@@ -80,12 +80,15 @@ export async function updateOfferStatus(req: Request, res: Response) {
     }
 
     const estado = req.body.estado_candidatura;
-    const estadosValidos = [null, '', 'enviada', 'respuesta', 'entrevista', 'oferta'];
+    const notas = req.body.notas;
+
+    const estadosValidos = [undefined, null, '', 'enviada', 'respuesta', 'entrevista', 'oferta'];
     if (!estadosValidos.includes(estado)) {
         return res.status(400).json({ error: "Estado no válido. Usa: enviada, respuesta, entrevista u oferta" });
     }
 
     const estadoFinal = estado === '' ? null : estado;
-    await actualizarEstadoCandidatura(id, estadoFinal);
-    res.json({ mensaje: 'Estado actualizado' });
+    await actualizarEstadoCandidatura(id, estadoFinal, notas);
+    res.json({ mensaje: 'Oferta actualizada con éxito' });
 }
+

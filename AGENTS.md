@@ -56,3 +56,5 @@ Junior, CFGS DAW terminado + curso Full Stack Open. Fuerte en HTML/CSS/JS, React
 4. Semana 4 — hecho: embudo de candidaturas, autenticación de usuarios con Supabase Auth, despliegue continuo en Vercel (frontend) y Render (backend API).
 5. Semana 5: migrar el cron + envío a Telegram + filtro de OpenClaw a `/api`, sustituyendo el heurístico `Si`/`Quizas` de `encaja_perfil` por el score real 0-100 de Codex. No es alertas "nuevas" — es sustituir la lógica que ya funciona en producción.
 6. Después: testing con Vitest, automatizar la ejecución periódica del scraper, migración a AWS.
+
+14. Modo guiado por voz: cuando Antonio indique que quiere trabajar por voz, presenta cada cambio en este orden: (1) qué problema resolvemos, (2) qué vamos a cambiar, (3) ruta completa del archivo y ubicación exacta, (4) código que Antonio debe escribir o sustituir, (5) explicación del porqué y cómo defenderlo en una entrevista, y (6) revisión y prueba después de que Antonio lo aplique. Avanza un solo cambio cada vez. En este modo no le pidas que adivine la solución antes de explicársela. Antonio sigue escribiendo el código y ejecutando el commit y el push.

@@ -4,6 +4,7 @@ import type { Offer } from "../types/offer";
 interface OfferCardProps {
     oferta: Offer;
     onCambiarEstado: (id: number, nuevoEstado: Offer['estado_candidatura']) => void;
+    onGuardarNotas?: (id: number, notas: string) => void;
 }
 
 function formatearFecha(fecha: string | null | undefined): string {
@@ -47,9 +48,12 @@ function estadoStyle(estado: Offer['estado_candidatura']) {
     }
 }
 
-export function OfferCard({ oferta, onCambiarEstado }: OfferCardProps) {
+export function OfferCard({ oferta, onCambiarEstado, onGuardarNotas }: OfferCardProps) {
     const sc = scoreColor(oferta.score);
     const [expandido, setExpandido] = useState(false);
+    const [mostrandoNotas, setMostrandoNotas] = useState(false);
+    const [textoNotas, setTextoNotas] = useState(oferta.notas || '');
+    const [guardandoNotas, setGuardandoNotas] = useState(false);
 
     return (
         <article className="bg-white rounded-xl border border-slate-200/80 hover:border-slate-300 transition-all group">
@@ -119,6 +123,20 @@ export function OfferCard({ oferta, onCambiarEstado }: OfferCardProps) {
                         <option value="oferta">Oferta</option>
                     </select>
 
+                    {/* Botón Notas */}
+                    <button
+                        onClick={() => setMostrandoNotas(!mostrandoNotas)}
+                        className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-colors flex items-center gap-1 ${
+                            oferta.notas || mostrandoNotas
+                                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                        }`}
+                        title="Notas personales sobre esta candidatura"
+                    >
+                        <span>📝</span>
+                        <span>{oferta.notas ? 'Con notas' : 'Notas'}</span>
+                    </button>
+
                     {/* Expandir/colapsar detalle IA */}
                     <button
                         onClick={() => setExpandido(!expandido)}
@@ -141,6 +159,52 @@ export function OfferCard({ oferta, onCambiarEstado }: OfferCardProps) {
                     )}
                 </div>
             </div>
+
+            {/* Panel expandible — Notas Personales */}
+            {mostrandoNotas && (
+                <div className="px-5 pb-4 pt-3 bg-amber-50/50 border-t border-amber-100 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
+                            <span>📝</span> Notas de seguimiento (entrevistas, contactos, feedback)
+                        </span>
+                        {oferta.notas && (
+                            <span className="text-[10px] text-amber-600 font-medium">Guardado en Supabase</span>
+                        )}
+                    </div>
+                    <textarea
+                        value={textoNotas}
+                        onChange={(e) => setTextoNotas(e.target.value)}
+                        placeholder="Escribe notas sobre tu candidatura: fecha de contacto, persona de RRHH, enlace a prueba técnica, etc..."
+                        rows={3}
+                        className="w-full p-2.5 bg-white border border-amber-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium resize-none shadow-2xs"
+                    />
+                    <div className="flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setMostrandoNotas(false)}
+                            className="px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:bg-white transition-colors"
+                        >
+                            Cerrar
+                        </button>
+                        <button
+                            type="button"
+                            disabled={guardandoNotas}
+                            onClick={async () => {
+                                if (!onGuardarNotas) return;
+                                setGuardandoNotas(true);
+                                try {
+                                    await onGuardarNotas(oferta.id, textoNotas);
+                                } finally {
+                                    setGuardandoNotas(false);
+                                }
+                            }}
+                            className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors disabled:opacity-50 shadow-2xs"
+                        >
+                            {guardandoNotas ? 'Guardando...' : 'Guardar nota'}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Panel expandible — Análisis IA */}
             {expandido && (

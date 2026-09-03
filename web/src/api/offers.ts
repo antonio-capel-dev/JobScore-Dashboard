@@ -9,12 +9,15 @@ export async function fetchOffers(): Promise<Offer[]> {
     return datos;
 }
 
-export async function updateOfferStatus(id: number, estado: Offer['estado_candidatura']) {
+export async function updateOfferStatus(id: number, estado?: Offer['estado_candidatura'], notas?: string | null) {
+    const body: Record<string, any> = {};
+    if (estado !== undefined) body.estado_candidatura = estado;
+    if (notas !== undefined) body.notas = notas;
     await fetch(`${API_URL}/offers/${id}/status`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ estado_candidatura: estado }),
+        body: JSON.stringify(body),
     });
 }

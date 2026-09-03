@@ -14,7 +14,14 @@ export interface ProcessSourceResult {
     puntuadas: number;
     omitidas: number;
     resultados: ScoringResult[];
+    duplicates?: number;
+    scored?: number;
+    discardedByScore?: number;
+    errors?: number;
+    saved?: number;
+    results?: ScoringResult[];
 }
+
 
 export function obtenerRutaCsv(fuente: string): string | null {
     if (fuente === 'tecnoempleo') {

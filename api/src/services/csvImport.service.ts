@@ -17,6 +17,7 @@ export interface ParsedOffer {
     stack_tecnologico: string[];
     nivel_ingles: string;
     url_oferta: string;
+    description?: string;
 }
 
 export function normalizarFechaPublicacion(fecha: string, fuente: string | undefined): string {
@@ -154,6 +155,7 @@ export function parseOffersCsvFromText(contenido: string): ParsedOffer[] {
         stack_tecnologico: fila.stack_tecnologico ? fila.stack_tecnologico.split(',').map((s: string) => s.trim()) : [],
         nivel_ingles: fila.nivel_ingles || 'no especificado',
         url_oferta: fila.url_oferta || `https://oferta-${Date.now()}-${Math.random()}`,
+        description: fila.description || '',
     }));
 
     return filterOffers(parsedOffers);

@@ -118,7 +118,7 @@ function KanbanColumn({
 }
 
 function App() {
-  const { offers: ofertas, cargando, recargarOfertas, actualizarEstadoOferta } = useOffers();
+  const { offers: ofertas, cargando, recargarOfertas, actualizarEstadoOferta, actualizarNotasOferta } = useOffers();
   const [session, setSession] = useState<Session | null>(null);
   
   // Filtros
@@ -134,6 +134,32 @@ function App() {
   const [subiendoCsv, setSubiendoCsv] = useState(false);
   const [mensajeSubida, setMensajeSubida] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Función para exportar las candidaturas actuales a CSV descargable
+  const exportarCsv = () => {
+    const cabeceras = ['Puesto', 'Empresa', 'Score', 'Fase', 'Modalidad', 'Ubicación', 'Salario', 'Notas', 'Enlace'];
+    const filas = ofertasFiltradas.map(o => [
+      `"${(o.titulo_puesto || '').replace(/"/g, '""')}"`,
+      `"${(o.empresa || '').replace(/"/g, '""')}"`,
+      o.score,
+      o.estado_candidatura || 'Sin postular',
+      o.modalidad,
+      `"${(o.ubicacion || '').replace(/"/g, '""')}"`,
+      `"${o.salario_min ? `${o.salario_min}€` : ''}${o.salario_min && o.salario_max ? ' - ' : ''}${o.salario_max ? `${o.salario_max}€` : ''}"`,
+      `"${(o.notas || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+      `"${o.url_oferta || ''}"`
+    ]);
+
+    const contenidoCsv = [cabeceras.join(','), ...filas.map(f => f.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + contenidoCsv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `mis_candidaturas_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleSubirArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -339,6 +365,15 @@ function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
               <span>{subiendoCsv ? 'Procesando ofertas...' : '📁 Subir CSV'}</span>
+            </button>
+
+            <button
+              onClick={exportarCsv}
+              disabled={ofertasFiltradas.length === 0}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs transition-colors border border-emerald-200 disabled:opacity-50"
+              title="Descargar las ofertas actuales con sus notas en formato CSV"
+            >
+              <span>📥 Exportar CSV</span>
             </button>
 
             <button
@@ -629,6 +664,7 @@ function App() {
                     key={oferta.id} 
                     oferta={oferta} 
                     onCambiarEstado={actualizarEstadoOferta}
+                    onGuardarNotas={actualizarNotasOferta}
                   />
                 ))
               ) : (
