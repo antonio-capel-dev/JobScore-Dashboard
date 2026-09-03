@@ -5,6 +5,7 @@ import {
     purgarOfertasDescartadas 
 } from "../db/offers.repository";
 import { procesarFuente, ejecutarPipelineCompleto, procesarTextoCsv } from "../services/pipeline.service";
+import { parseOffersCsvFromText } from "../services/csvImport.service";
 
 export async function importOffers(req: Request, res: Response) {
     const fuente = req.params.fuente as string;
@@ -31,13 +32,21 @@ export async function uploadOffersCsv(req: Request, res: Response) {
         return res.status(400).json({ error: "El contenido del archivo CSV es obligatorio" });
     }
 
-    try {
-        const resultado = await procesarTextoCsv(csvText);
-        res.json(resultado);
-    } catch (error: any) {
-        console.error("Error procesando CSV subido:", error.message);
-        res.status(500).json({ error: error.message });
-    }
+    // Parsear y filtrar es instantáneo — lo hacemos antes de responder para dar el conteo real
+    const ofertasFiltradas = parseOffersCsvFromText(csvText);
+
+    // Responder inmediatamente al frontend (no bloquear la conexión HTTP)
+    res.json({
+        mensaje: `Recibidas ${ofertasFiltradas.length} ofertas válidas. Evaluando con IA en segundo plano...`,
+        total: ofertasFiltradas.length
+    });
+
+    // Procesar en background (la conexión HTTP ya se cerró)
+    procesarTextoCsv(csvText).then(resultado => {
+        console.log(`[Upload] Finalizado: ${resultado.puntuadas} evaluadas, ${resultado.total - resultado.omitidas - resultado.puntuadas} descartadas por score bajo`);
+    }).catch(err => {
+        console.error('[Upload] Error en procesamiento background:', err);
+    });
 }
 
 export async function triggerPipeline(req: Request, res: Response) {

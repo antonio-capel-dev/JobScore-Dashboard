@@ -53,6 +53,50 @@ export function esOfertaSenior(titulo: string, experiencia: string | null): bool
     return PATRONES_SENIOR.some(patron => patron.test(texto));
 }
 
+// Tecnologías y roles que Antonio NO domina — descarte instantáneo sin gastar LLM
+const TITULOS_FUERA_DE_ALCANCE = [
+    /\bjava\b(?!\s*script)/i,   // Java pero NO JavaScript
+    /\b\.?net\b/i,              // .NET, C#
+    /\bc#\b/i,
+    /\bcobol\b/i,
+    /\bsap\b/i,
+    /\babap\b/i,
+    /\brpa\b/i,
+    /\bsalesforce\b/i,
+    /\bdata\s*scientist\b/i,
+    /\bdata\s*engineer\b/i,
+    /\bmachine\s*learning\b/i,
+    /\bdeep\s*learning\b/i,
+    /\bcomputer\s*vision\b/i,
+    /\bciberseguridad\b/i,
+    /\bcybersecurity\b/i,
+    /\baudit\b/i,
+    /\bdevops\b/i,
+    /\bsre\b/i,
+    /\bplatform\s*engineer\b/i,
+    /\bios\b(?!\s*developer)/i,
+    /\bswift\b/i,
+    /\bkotlin\b/i,
+    /\bandroid\b/i,
+    /\bflutter\b/i,
+    /\bpower\s*bi\b/i,
+    /\btableau\b/i,
+    /\bpower\s*platform\b/i,
+    /\bgo\s+developer\b/i,
+    /\bgolang\b/i,
+    /\bruby\b/i,
+    /\brails\b/i,
+    /\bscala\b/i,
+    /\brust\b/i,
+    /\bdatabricks\b/i,
+    /\bspark\b/i,
+    /\bhadoop\b/i,
+];
+
+export function esTecnologiaFueraDeAlcance(titulo: string): boolean {
+    return TITULOS_FUERA_DE_ALCANCE.some(patron => patron.test(titulo));
+}
+
 // Filtro pre-scoring: descarta ofertas no viables antes de llamar al LLM
 export function filterOffers(offers: ParsedOffer[]): ParsedOffer[] {
     const filteredOffers: ParsedOffer[] = [];
@@ -62,7 +106,12 @@ export function filterOffers(offers: ParsedOffer[]): ParsedOffer[] {
             continue;
         }
 
-        // 2. Filtro por Ubicación y Modalidad (Null-safe)
+        // 2. Descarte por tecnología/rol fuera de alcance (Java, .NET, Data Scientist, etc.)
+        if (esTecnologiaFueraDeAlcance(offer.titulo_puesto)) {
+            continue;
+        }
+
+        // 3. Filtro por Ubicación y Modalidad (Null-safe)
         const ubicacionLower = (offer.ubicacion || '').toLowerCase();
         const modalidadLower = (offer.modalidad || '').toLowerCase();
 
@@ -73,7 +122,7 @@ export function filterOffers(offers: ParsedOffer[]): ParsedOffer[] {
             }
         }
 
-        // 3. Filtro por Salario Mínimo: si se especifica salario y es inferior a 10.000€
+        // 4. Filtro por Salario Mínimo: si se especifica salario y es inferior a 10.000€
         if (offer.salario_min !== null && offer.salario_min < 10000) {
             continue;
         }
