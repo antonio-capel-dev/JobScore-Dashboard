@@ -102,7 +102,7 @@ export async function procesarFuente(fuente: 'adzuna' | 'tecnoempleo', limit?: n
             }
 
             // Pausa preventiva de 1.5s contra rate limit de OpenRouter
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
             console.error(`[Pipeline] Error procesando oferta de ${fuente}:`, error);
         }
@@ -171,7 +171,7 @@ export async function procesarTextoCsv(contenidoCsv: string): Promise<ProcessSou
                 console.log(`[Pipeline] Oferta descartada por afinidad insuficiente (${ofertaScored.score} pts): ${offer.titulo_puesto}`);
             }
 
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
             console.error(`[Pipeline] Error procesando oferta subida:`, error);
         }

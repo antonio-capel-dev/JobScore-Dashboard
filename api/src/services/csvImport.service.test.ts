@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizarFechaPublicacion, esOfertaSenior, filterOffers, type ParsedOffer } from './csvImport.service';
+import { normalizarFechaPublicacion, esOfertaSenior, esTecnologiaFueraDeAlcance, filterOffers, type ParsedOffer } from './csvImport.service';
 
 describe('csvImport.service', () => {
     describe('normalizarFechaPublicacion', () => {
@@ -42,6 +42,48 @@ describe('csvImport.service', () => {
             expect(esOfertaSenior('Desarrollador Frontend Junior', null)).toBe(false);
             expect(esOfertaSenior('Trainee Web Developer', 'Sin experiencia')).toBe(false);
             expect(esOfertaSenior('Prácticas Desarrollo React', null)).toBe(false);
+        });
+    });
+
+    describe('esTecnologiaFueraDeAlcance (Filtro de Stack)', () => {
+        it('debe descartar ofertas de Java (pero NO JavaScript)', () => {
+            expect(esTecnologiaFueraDeAlcance('Desarrollador Java')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('Java Developer (Arquitectura LRBA)')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('Junior Java Backend Developer')).toBe(true);
+            // JavaScript NO debe ser descartado
+            expect(esTecnologiaFueraDeAlcance('Junior JavaScript Developer')).toBe(false);
+        });
+
+        it('debe descartar ofertas de .NET, C#, Cobol, SAP', () => {
+            expect(esTecnologiaFueraDeAlcance('Programador .Net')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('Programador Cobol')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('Consultor SAP')).toBe(true);
+        });
+
+        it('debe descartar ofertas de Data Science / ML / IA especializada', () => {
+            expect(esTecnologiaFueraDeAlcance('Data Scientist - Song')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('Machine Learning Engineer')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('Data Engineer especialista en Databricks')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('Computer Vision Engineer (IA)')).toBe(true);
+        });
+
+        it('debe descartar ofertas de Ciberseguridad, Audit, DevOps', () => {
+            expect(esTecnologiaFueraDeAlcance('Analista Ciberseguridad Junior')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('IT&Data Audit&Assurance')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('DevOps Engineer')).toBe(true);
+        });
+
+        it('NO debe descartar ofertas de React, TypeScript, WordPress, PHP, Node, Python, Full Stack', () => {
+            expect(esTecnologiaFueraDeAlcance('Junior React Developer')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Desarrollador/a Front-End (React / Next.js)')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Desarrollador Web WordPress con conocimientos SEO')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Programador/a PHP (Laravel / Symfony)')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Backend NodeJS / NestJS Developer')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Full Stack Developer NodeJs / Angular')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Ingeniero/a de Software Frontend (Junior)')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('IA Developer')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Frontend React - TV')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Desarrollador/a QA')).toBe(false);
         });
     });
 
@@ -92,5 +134,13 @@ describe('csvImport.service', () => {
             const resultado = filterOffers([ofertaBajoSalario]);
             expect(resultado).toHaveLength(0);
         });
+
+        it('debe descartar ofertas de tecnologías fuera de alcance (Java, .NET, ML...)', () => {
+            const ofertaJava = { ...baseOffer, titulo_puesto: 'Desarrollador Java' };
+            const ofertaML = { ...baseOffer, titulo_puesto: 'Machine Learning Engineer' };
+            const resultado = filterOffers([ofertaJava, ofertaML]);
+            expect(resultado).toHaveLength(0);
+        });
     });
 });
+

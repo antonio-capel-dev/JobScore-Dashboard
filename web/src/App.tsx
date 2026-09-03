@@ -156,8 +156,18 @@ function App() {
       }
 
       const data = await res.json();
-      setMensajeSubida(`¡Éxito! Se evaluaron ${data.total} ofertas (${data.puntuadas} con afinidad guardadas en Supabase).`);
-      await recargarOfertas();
+      setMensajeSubida(`${data.mensaje} Las ofertas irán apareciendo en unos segundos.`);
+
+      // Auto-recarga cada 10 segundos durante 3 minutos para ir mostrando las ofertas nuevas
+      const intervalo = setInterval(async () => {
+        await recargarOfertas();
+      }, 10000);
+      setTimeout(() => {
+        clearInterval(intervalo);
+        recargarOfertas();
+        setMensajeSubida(null);
+      }, 180000);
+
     } catch (err: any) {
       alert(`Error procesando el archivo CSV: ${err.message}`);
     } finally {
