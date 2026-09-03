@@ -124,6 +124,7 @@ function App() {
   // Filtros
   const [busquedaTexto, setBusquedaTexto] = useState('');
   const [modalidadSeleccionada, setModalidadSeleccionada] = useState('todas');
+  const [fuenteSeleccionada, setFuenteSeleccionada] = useState('todas');
   const [estadoSeleccionado, setEstadoSeleccionado] = useState('todos');
   const [scoreMinimo, setScoreMinimo] = useState(0);
   const [ordenSeleccionado, setOrdenSeleccionado] = useState<'recientes' | 'score' | 'antiguas'>('recientes');
@@ -215,6 +216,15 @@ function App() {
     return { total, topMatches, postuladas, enEntrevista, salarioPromedio };
   }, [ofertas]);
 
+  // Fuentes únicas disponibles en el conjunto actual de ofertas
+  const fuentesDisponibles = useMemo(() => {
+    const setFuentes = new Set<string>();
+    ofertas.forEach(o => {
+      if (o.fuente) setFuentes.add(o.fuente);
+    });
+    return ['todas', ...Array.from(setFuentes)];
+  }, [ofertas]);
+
   // Filtrado y Ordenación de ofertas
   const ofertasFiltradas = useMemo(() => {
     const q = busquedaTexto.toLowerCase().trim();
@@ -222,6 +232,9 @@ function App() {
     const filtradas = ofertas.filter((oferta) => {
       // Filtro Modalidad
       const matchModalidad = modalidadSeleccionada === 'todas' || oferta.modalidad === modalidadSeleccionada;
+
+      // Filtro Fuente
+      const matchFuente = fuenteSeleccionada === 'todas' || (oferta.fuente || '').toLowerCase() === fuenteSeleccionada.toLowerCase();
       
       // Filtro Score
       const matchScore = oferta.score >= scoreMinimo;
@@ -240,7 +253,7 @@ function App() {
         oferta.stack_tecnologico.some(t => t.toLowerCase().includes(q))
       );
 
-      return matchModalidad && matchScore && matchEstado && matchTexto;
+      return matchModalidad && matchFuente && matchScore && matchEstado && matchTexto;
     });
 
     return filtradas.sort((a, b) => {
@@ -253,7 +266,7 @@ function App() {
       // 'recientes' por defecto (más nuevas arriba)
       return new Date(b.fecha_publicacion || b.fecha_scrape || 0).getTime() - new Date(a.fecha_publicacion || a.fecha_scrape || 0).getTime();
     });
-  }, [ofertas, busquedaTexto, modalidadSeleccionada, estadoSeleccionado, scoreMinimo, ordenSeleccionado]);
+  }, [ofertas, busquedaTexto, modalidadSeleccionada, fuenteSeleccionada, estadoSeleccionado, scoreMinimo, ordenSeleccionado]);
 
   // Datos para gráficas
   const datosModalidad = [
@@ -273,6 +286,7 @@ function App() {
   const restablecerFiltros = () => {
     setBusquedaTexto('');
     setModalidadSeleccionada('todas');
+    setFuenteSeleccionada('todas');
     setEstadoSeleccionado('todos');
     setScoreMinimo(0);
     setOrdenSeleccionado('recientes');
@@ -457,7 +471,7 @@ function App() {
           </div>
 
           {/* Segunda fila de filtros */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-2 border-t border-slate-100 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 pt-2 border-t border-slate-100 items-end">
             
             {/* Modalidad */}
             <div className="space-y-1">
@@ -472,6 +486,21 @@ function App() {
                 <option value="hibrido">Híbrido</option>
                 <option value="presencial">Presencial</option>
                 <option value="no especificado">No especificado</option>
+              </select>
+            </div>
+
+            {/* Fuente del Portal */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase">Fuente</label>
+              <select 
+                value={fuenteSeleccionada} 
+                onChange={(e) => setFuenteSeleccionada(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="todas">Todas las fuentes</option>
+                {fuentesDisponibles.filter(f => f !== 'todas').map(fuente => (
+                  <option key={fuente} value={fuente}>{fuente}</option>
+                ))}
               </select>
             </div>
 
