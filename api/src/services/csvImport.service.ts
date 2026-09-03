@@ -138,6 +138,7 @@ export function parseOffersCsvFromText(contenido: string): ParsedOffer[] {
         columns: true,
         skip_empty_lines: true,
         bom: true,
+        relax_column_count: true,
     });
     const parsedOffers = filas.map((fila: any) => ({
         fecha_scrape: fila.fecha_scrape || new Date().toISOString().split('T')[0],
