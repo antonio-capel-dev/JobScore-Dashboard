@@ -60,7 +60,7 @@ export async function guardarOferta(offer: ParsedOffer, scoring: ScoringResult) 
     });
 
     if (error) {
-        console.log('Error guardando oferta:', error);
+        throw error;
     }
 }
 
