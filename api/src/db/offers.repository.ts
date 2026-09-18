@@ -68,7 +68,7 @@ export async function obtenerOfertas() {
     const { data, error } = await supabase
         .from('offers')
         .select("*")
-        .order('fecha_publicacion', { ascending: false, nullsFirst: false });
+        .order('created_at', { ascending: false });
 
     if (error) {
         console.log('Error buscando ofertas:', error);
