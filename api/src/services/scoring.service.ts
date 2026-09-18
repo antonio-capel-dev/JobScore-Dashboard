@@ -75,7 +75,7 @@ export async function scoreOffer(offer: ParsedOffer): Promise<ScoringResult>  {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            model: 'inclusion-ai/ling-3.0-flash',
+            model: 'inclusionai/ling-3.0-flash-vl:free',
             messages: [{role: 'user', content: prompt}],
         }),
     });
