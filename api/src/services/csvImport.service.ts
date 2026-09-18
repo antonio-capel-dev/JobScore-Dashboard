@@ -54,43 +54,25 @@ export function esOfertaSenior(titulo: string, experiencia: string | null): bool
     return PATRONES_SENIOR.some(patron => patron.test(texto));
 }
 
-// Tecnologías y roles que Antonio NO domina — descarte instantáneo sin gastar LLM
+// Tecnologías y roles claramente fuera del stack de Antonio — descarte sin gastar LLM
+// Criterio: dominio muy especializado que no se aprende en semanas ni con IA
 const TITULOS_FUERA_DE_ALCANCE = [
-    /\bjava\b(?!\s*script)/i,   // Java pero NO JavaScript
-    /\b\.?net\b/i,              // .NET, C#
-    /\bc#\b/i,
     /\bcobol\b/i,
     /\bsap\b/i,
     /\babap\b/i,
-    /\brpa\b/i,
-    /\bsalesforce\b/i,
     /\bdata\s*scientist\b/i,
     /\bdata\s*engineer\b/i,
-    /\bmachine\s*learning\b/i,
+    /\bmachine\s*learning\s*engineer\b/i,
     /\bdeep\s*learning\b/i,
     /\bcomputer\s*vision\b/i,
     /\bciberseguridad\b/i,
     /\bcybersecurity\b/i,
-    /\baudit\b/i,
-    /\bdevops\b/i,
-    /\bsre\b/i,
-    /\bplatform\s*engineer\b/i,
-    /\bios\b(?!\s*developer)/i,
+    /\bpenetration\s*test/i,
+    /\bios\s*developer\b/i,
     /\bswift\b/i,
     /\bkotlin\b/i,
-    /\bandroid\b/i,
     /\bflutter\b/i,
-    /\bpower\s*bi\b/i,
-    /\btableau\b/i,
-    /\bpower\s*platform\b/i,
-    /\bgo\s+developer\b/i,
-    /\bgolang\b/i,
-    /\bruby\b/i,
-    /\brails\b/i,
     /\bscala\b/i,
-    /\brust\b/i,
-    /\bdatabricks\b/i,
-    /\bspark\b/i,
     /\bhadoop\b/i,
 ];
 
@@ -123,8 +105,8 @@ export function filterOffers(offers: ParsedOffer[]): ParsedOffer[] {
             }
         }
 
-        // 4. Filtro por Salario Mínimo: si se especifica salario y es inferior a 10.000€
-        if (offer.salario_min !== null && offer.salario_min < 10000) {
+        // 4. Filtro por Salario Mínimo: si se especifica salario y es inferior a 5.000€
+        if (offer.salario_min !== null && offer.salario_min < 5000) {
             continue;
         }
 
