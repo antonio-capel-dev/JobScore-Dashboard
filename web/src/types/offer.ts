@@ -21,4 +21,6 @@ export interface Offer {
     score: number;
     estado_candidatura: null|'enviada'|'respuesta'|'oferta'|'entrevista';
     notas?: string |null;
+    created_at?: string;
+
 }

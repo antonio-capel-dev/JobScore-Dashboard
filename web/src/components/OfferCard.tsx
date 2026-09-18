@@ -48,6 +48,14 @@ function estadoStyle(estado: Offer['estado_candidatura']) {
     }
 }
 
+function esNueva(created_at: string | undefined): boolean {
+    if (!created_at) return false;
+    const diff = Date.now() - new Date(created_at).getTime();
+    return diff < 1000 * 60 * 60 * 48;
+}
+
+
+
 export function OfferCard({ oferta, onCambiarEstado, onGuardarNotas }: OfferCardProps) {
     const sc = scoreColor(oferta.score);
     const [expandido, setExpandido] = useState(false);
@@ -72,6 +80,11 @@ export function OfferCard({ oferta, onCambiarEstado, onGuardarNotas }: OfferCard
                         <h3 className="text-sm font-bold text-slate-900 leading-snug line-clamp-1 group-hover:text-blue-700 transition-colors">
                             {oferta.titulo_puesto}
                         </h3>
+                        {esNueva(oferta.created_at) && (
+                        <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                        Nueva
+                        </span>
+                        )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
