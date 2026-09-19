@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import { importJobs } from "../services/importJobs.service";
+import { randomUUID } from "node:crypto";
 import { 
     actualizarEstadoCandidatura, 
     obtenerOfertas,
@@ -35,18 +37,51 @@ export async function uploadOffersCsv(req: Request, res: Response) {
     // Parsear y filtrar es instantáneo — lo hacemos antes de responder para dar el conteo real
     const ofertasFiltradas = parseOffersCsvFromText(csvText);
 
-    // Responder inmediatamente al frontend (no bloquear la conexión HTTP)
-    res.json({
-        mensaje: `Recibidas ${ofertasFiltradas.length} ofertas válidas. Evaluando con IA en segundo plano...`,
+    const jobId = randomUUID();
+
+    importJobs.set(jobId, {
+        status: 'processing',
+        total: ofertasFiltradas.length,
+        saved: 0,
+        duplicates: 0,
+        discarded: 0,
+        errors: 0,
+        message: 'Evaluando ofertas con IA.'
+    });
+
+    res.status(202).json({
+        jobId,
+        mensaje: 'Archivo recibido. Evaluando ofertas con IA',
         total: ofertasFiltradas.length
     });
+    
 
     // Procesar en background (la conexión HTTP ya se cerró)
     procesarTextoCsv(csvText).then(resultado => {
-        console.log(`[Upload] Finalizado: ${resultado.puntuadas} evaluadas, ${resultado.total - resultado.omitidas - resultado.puntuadas} descartadas por score bajo`);
-    }).catch(err => {
+        const job = importJobs.get(jobId);
+        if (!job) return;
+
+        job.saved = resultado.saved ?? 0;
+        job.duplicates = resultado.omitidas;
+        job.discarded = resultado.discardedByScore ?? 0;
+        job.errors = resultado.errors ?? 0;
+        job.status = 'completed';
+        job.message = job.errors > 0 ? 'Importación finalizada con errores en algunas ofertas.' : 'Importación finalizada';
+
+        console.log(`[Upload] Finalizado: `, job); 
+        
+    }).catch(err=> {
+        const job = importJobs.get(jobId);
+
+        if (job) {
+            job.status = 'failed';
+            job.message = ' La importación se interrumpió, no se pudo completar el proceso';
+
+        }
+
         console.error('[Upload] Error en procesamiento background:', err);
-    });
+    })
+    
 }
 
 export async function triggerPipeline(req: Request, res: Response) {

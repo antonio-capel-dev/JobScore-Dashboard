@@ -78,6 +78,9 @@ export async function ejecutarScraperPython(): Promise<{ success: boolean; outpu
 export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSourceResult> {
     const resultados: ScoringResult[] = [];
     let omitidas = 0;
+    let guardadas = 0;
+    let descartadasPorScore = 0;
+    let fallidas = 0;
 
     for (const offer of ofertas) {
         try {
@@ -92,13 +95,20 @@ export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSo
 
             if (ofertaScored.score >= 45 && ofertaScored.veredicto !== 'No') {
                 await guardarOferta(offer, ofertaScored);
+                guardadas++;
+                try {
                 await sendOfferNotification(offer, ofertaScored);
+                } catch (error) {
+                    console.error('Oferta guardada, pero falló la notificación de Telegram', error)
+                }
             } else {
+                descartadasPorScore++;
                 console.log(`[Pipeline] Oferta descartada por afinidad insuficiente (${ofertaScored.score} pts): ${offer.titulo_puesto}`);
             }
 
             await new Promise(resolve => setTimeout(resolve, 500));
         } catch (error) {
+            fallidas++;
             console.log(`[Pipeline] Error procesando oferta:`, error);
         }
     }
@@ -107,7 +117,10 @@ export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSo
         total: ofertas.length,
         puntuadas: resultados.length,
         omitidas,
-        resultados
+        resultados,
+        saved: guardadas,
+        discardedByScore: descartadasPorScore,
+        errors: fallidas
     };
 }
 
