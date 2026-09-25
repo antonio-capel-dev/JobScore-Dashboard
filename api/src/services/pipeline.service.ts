@@ -106,11 +106,14 @@ export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSo
                 console.log(`[Pipeline] Oferta descartada por afinidad insuficiente (${ofertaScored.score} pts): ${offer.titulo_puesto}`);
             }
 
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 2500));
         } catch (error) {
             fallidas++;
             console.log(`[Pipeline] Error procesando oferta:`, error);
+                
+            await new Promise(resolve => setTimeout(resolve, 4000));
         }
+        
     }
 
     return {
