@@ -84,6 +84,11 @@ export function esTecnologiaFueraDeAlcance(titulo: string): boolean {
 export function filterOffers(offers: ParsedOffer[]): ParsedOffer[] {
     const filteredOffers: ParsedOffer[] = [];
     for (const offer of offers) {
+
+        if (!offer.url_oferta || !offer.url_oferta.startsWith('https://')) {
+    continue;
+}
+        
         // 1. Descarte por Seniority: si es Senior/Lead/Architect/5+ años, descartar
         if (esOfertaSenior(offer.titulo_puesto, offer.experiencia_requerida)) {
             continue;
@@ -137,7 +142,7 @@ export function parseOffersCsvFromText(contenido: string): ParsedOffer[] {
         experiencia_requerida: fila.experiencia_requerida === '' ? null : fila.experiencia_requerida,
         stack_tecnologico: fila.stack_tecnologico ? fila.stack_tecnologico.split(',').map((s: string) => s.trim()) : [],
         nivel_ingles: fila.nivel_ingles || 'no especificado',
-        url_oferta: fila.url_oferta || `https://oferta-${Date.now()}-${Math.random()}`,
+        url_oferta: fila.url_oferta || '',
         description: fila.description || '',
     }));
 
