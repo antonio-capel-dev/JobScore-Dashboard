@@ -21,3 +21,24 @@ export async function updateOfferStatus(id: number, estado?: Offer['estado_candi
         body: JSON.stringify(body),
     });
 }
+
+export interface ImportJob {
+    status: 'processing' | 'completed' | 'failed';
+    total: number;
+    saved: number;
+    duplicates: number;
+    discarded: number;
+    errors: number;
+    message: string;
+}
+
+export async function fetchImportJob(jobId: string): Promise<ImportJob> {
+    const respuesta = await fetch(`${API_URL}/offers/import-jobs/${encodeURIComponent(jobId)}`);
+
+    if (!respuesta.ok) {
+        throw new Error('No se pudo consultar el estado de la importación');
+    }
+
+    return respuesta.json();
+}
+

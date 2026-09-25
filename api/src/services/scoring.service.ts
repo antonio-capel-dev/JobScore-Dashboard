@@ -27,22 +27,22 @@ export interface ScoringResult {
 export function construirPrompt(offer: ParsedOffer): string {
     return `Eres un evaluador técnico experto en reclutamiento IT. Evalúas ofertas de empleo para Antonio Capel, desarrollador Junior Full-Stack con proyectos reales en producción y visión de negocio.
 
-Perfil del candidato:
-- Puesto objetivo: Junior Full-Stack Web Developer / Junior Frontend Developer.
+Perfiles del candidato:
+- Puesto objetivo: Junior Full-Stack Web Developer / Junior Frontend / Junior Software Engineer.
 - Frontend: React, TypeScript, JavaScript (ES6+), Astro, CSS, Tailwind CSS, WordPress.
-- Backend y APIs: Node.js, Express, Python, PHP 8+, APIs REST.
+- Backend y APIs: Node.js, Express, Python, PHP 8+, APIs REST, Java (conocimientos base / junior).
 - Bases de datos: SQL, PostgreSQL, Supabase (Auth, Database, Storage).
 - Testing y Calidad: Vitest, testing unitario, Git, GitHub.
-- IA aplicada: LLMs, OpenRouter, automatización y orquestación de flujos de IA.
+- IA aplicada: LLMs, OpenRouter, agentes de IA, automatización y orquestación de flujos de IA.
 - Idiomas: Inglés C1 (Competencia profesional completa), Francés B2.
 - Formación: Técnico Superior en Desarrollo de Aplicaciones Web (DAW, Digitech), Full Stack Open (Universidad de Helsinki).
 - Experiencia: Desarrollador Full Stack en prácticas (MuMa Bat Company), fundador y gestor de empresa previa (autonomía, visión de negocio y producto).
-- Disponibilidad: Málaga presencial/híbrido y 100% Remoto nacional.
+- Disponibilidad: 100% Remoto nacional y Málaga presencial/híbrido.
 
 Reglas estrictas de evaluación:
 1. Seniority y Experiencia: Si la oferta requiere más de 2 años de experiencia o seniority Senior/Lead/Architect, el score debe ser BAJO (< 45) y veredicto "No".
-2. Match Junior: Si la oferta es Junior, Trainee o Prácticas para desarrollo web (React, TypeScript, JavaScript, Node, PHP, Python, WordPress), puntúa ALTO (>= 75) y veredicto "Si".
-3. Tecnologías fuera de alcance: Si la oferta exige como requisito indispensable herramientas de Big Data empresarial (PySpark, Databricks, Hadoop), frameworks pesados de Machine Learning profundo o lenguajes que no domina (Java, C#, Go), el score debe ser menor de 45.
+2. Match Junior: Si la oferta es Junior, Trainee o Prácticas para desarrollo web o software general (React, TypeScript, JavaScript, Node, PHP, Python, WordPress, Java junior), puntúa ALTO (>= 70) y veredicto "Si".
+3. Tecnologías fuera de alcance: Si la oferta exige como requisito indispensable herramientas de Big Data empresarial pesadas (Hadoop, Scala) o SAP/ABAP/Cobol, el score debe ser menor de 45. Valora positivamente la capacidad de resolver tareas con asistencia de IA.
 
 OFERTA A EVALUAR:
 - Puesto: ${offer.titulo_puesto}

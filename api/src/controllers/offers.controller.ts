@@ -127,3 +127,23 @@ export async function updateOfferStatus(req: Request, res: Response) {
     res.json({ mensaje: 'Oferta actualizada con éxito' });
 }
 
+export function getImport(req: Request, res:Response) {
+    const jobId = req.params.jobId;
+
+    if(typeof jobId !== 'string') {
+        return res.status(400).json({
+            error: 'El identificador de importación no es válido'
+        });
+    }
+
+    const job = importJobs.get(jobId);
+
+    if (!job) {
+        return res.status(404).json({
+            error: 'No se encuentra el seguimiento de esta importación, el servidor puede haberse reiniciado'
+        })
+    } 
+
+    return res.json(job);
+}
+
