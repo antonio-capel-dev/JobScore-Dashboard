@@ -5,11 +5,14 @@ import {
     importOffers, 
     triggerPipeline,
     purgeLowScoreOffers,
-    uploadOffersCsv 
+    uploadOffersCsv,
+    getImport 
 } from "../controllers/offers.controller";
 
 const router = Router();
 
+
+router.get('/offers/import-jobs/:jobId', getImport);
 router.post('/pipeline/run', triggerPipeline);
 router.post('/offers/upload', uploadOffersCsv);
 router.delete('/offers/purge', purgeLowScoreOffers);
