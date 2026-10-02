@@ -3,16 +3,19 @@ import type { Offer } from '../types/offer';
 import { fetchOffers, updateOfferStatus } from '../api/offers';
 
 export function useOffers() {
+    const [error, setError] = useState<string | null>(null);
     const [offers, setOffers] = useState<Offer[]>([]);
     const [cargando, setCargando] = useState<boolean>(true);
 
     const recargarOfertas = useCallback(async () => {
         setCargando(true);
+        setError(null);
         try {
             const data = await fetchOffers();
             setOffers(data);
-        } catch (error) {
-            console.error("Error cargando ofertas:", error);
+        } catch (err: any) {
+            console.error("Error cargando ofertas:", err);
+            setError(err.message || "Error de conexión con la API");
         } finally {
             setCargando(false);
         }
@@ -32,5 +35,5 @@ export function useOffers() {
         setOffers(prev => prev.map(oferta => oferta.id === id ? { ...oferta, notas } : oferta));
     }
 
-    return { offers, cargando, recargarOfertas, actualizarEstadoOferta, actualizarNotasOferta };
+    return { offers, cargando, error, recargarOfertas, actualizarEstadoOferta, actualizarNotasOferta };
 }
