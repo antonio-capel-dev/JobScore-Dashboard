@@ -118,7 +118,7 @@ function KanbanColumn({
 }
 
 function App() {
-  const { offers: ofertas, cargando, recargarOfertas, actualizarEstadoOferta, actualizarNotasOferta } = useOffers();
+  const { offers: ofertas, cargando, error, recargarOfertas, actualizarEstadoOferta, actualizarNotasOferta } = useOffers();
   const [session, setSession] = useState<Session | null>(null);
   
   // Filtros
@@ -650,15 +650,33 @@ function App() {
             </h2>
           </div>
 
-          {cargando ? (
+                    {cargando ? (
             <div className="space-y-4">
               <SkeletonCard />
               <SkeletonCard />
               <SkeletonCard />
             </div>
+          ) : error ? (
+            /* CASO 1: ERROR DE RED O SERVIDOR API */
+            <div className="bg-rose-50 border border-rose-200 p-8 text-center rounded-3xl text-rose-900 space-y-3">
+              <div className="w-12 h-12 rounded-full bg-rose-100 mx-auto flex items-center justify-center text-xl">
+                ⚠️
+              </div>
+              <h3 className="font-bold text-base">Error al conectar con la API</h3>
+              <p className="text-xs text-rose-600 max-w-md mx-auto">
+                {error}. Si el backend está alojado en un plan gratuito (Render), la API puede tardar unos 45 segundos en "despertar".
+              </p>
+              <button
+                onClick={() => recargarOfertas()}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+              >
+                🔄 Reintentar conexión
+              </button>
+            </div>
           ) : vistaActual === 'lista' ? (
             <div className="space-y-4">
               {ofertasFiltradas.length > 0 ? (
+                /* CASO A: HAY OFERTAS QUE COINCIDEN */
                 ofertasFiltradas.map((oferta) => (
                   <OfferCard 
                     key={oferta.id} 
@@ -667,7 +685,19 @@ function App() {
                     onGuardarNotas={actualizarNotasOferta}
                   />
                 ))
+              ) : ofertas.length === 0 ? (
+                /* CASO B: LA BASE DE DATOS ESTÁ TOTALMENTE VACÍA */
+                <div className="bg-white p-12 text-center rounded-3xl border border-slate-200 text-slate-500 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-50 mx-auto flex items-center justify-center text-xl text-blue-600">
+                    📭
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-base">La base de datos no tiene ofertas todavía</h3>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Utiliza el botón <strong>📁 Subir CSV</strong> en la cabecera para importar ofertas o ejecuta el scraper.
+                  </p>
+                </div>
               ) : (
+                /* CASO C: LA BD TIENE OFERTAS PERO TUS FILTROS LAS OCULTAN */
                 <div className="bg-white p-12 text-center rounded-3xl border border-slate-200 text-slate-500 space-y-3">
                   <div className="w-12 h-12 rounded-full bg-slate-100 mx-auto flex items-center justify-center text-xl">
                     🔍
@@ -686,6 +716,7 @@ function App() {
               )}
             </div>
           ) : (
+  
             /* Vista Tablero Kanban */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <KanbanColumn 
