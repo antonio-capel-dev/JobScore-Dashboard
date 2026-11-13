@@ -13,3 +13,8 @@ venv/
 
 # Notas internas (no es parte del proyecto)
 JobScore Dashboard.md.txt
+
+# Notas internas de trabajo (no forman parte del proyecto)
+CLAUDE.md
+AGENTS.md
+audit.md
