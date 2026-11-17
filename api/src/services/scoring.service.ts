@@ -75,7 +75,7 @@ export async function scoreOffer(offer: ParsedOffer): Promise<ScoringResult>  {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            model: 'qwen/qwen3.8-27b:free',
+            model: 'qwen/qwen3.8-27b',
             messages: [{role: 'user', content: prompt}],
         }),
     });
