@@ -20,13 +20,34 @@ export interface ParsedOffer {
     description?: string;
 }
 
-export function normalizarFechaPublicacion(fecha: string, fuente: string | undefined): string {
-    if (fuente) {
-        const partes = fecha.split('/');
-        return `${partes[2]}-${partes[1]}-${partes[0]}`;
-    } else {
-        return fecha;
+export function normalizarFechaPublicacion(fecha: string, _fuente?: string): string {
+    const texto = (fecha ?? '').trim();
+    const hoy = new Date();
+
+    // 1. Ya viene en ISO: AAAA-MM-DD (Adzuna)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+        return texto;
     }
+
+    // 2. Formato DD/MM/AAAA (Tecnoempleo, InfoJobs)
+    const dma = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dma) {
+        return `${dma[3]}-${dma[2].padStart(2, '0')}-${dma[1].padStart(2, '0')}`;
+    }
+
+    // 3. Formato relativo (LinkedIn): "Hace 6 días", "Hace 2 semanas", "Hace 1 mes"...
+    const relativa = texto.match(/hace\s+(\d+)\s+(minuto|hora|d[ií]a|semana|mes)/i);
+    if (relativa) {
+        const cantidad = Number(relativa[1]);
+        const unidad = relativa[2].toLowerCase();
+        if (unidad === 'semana') hoy.setDate(hoy.getDate() - cantidad * 7);
+        else if (unidad === 'mes') hoy.setMonth(hoy.getMonth() - cantidad);
+        else if (unidad === 'día' || unidad === 'dia') hoy.setDate(hoy.getDate() - cantidad);
+        // minutos u horas: la fecha es hoy
+    }
+
+    // 4. Formato desconocido: usamos hoy, para no romper el insert (la columna es NOT NULL)
+    return hoy.toISOString().split('T')[0];
 }
 
 // Patrones de seniority alto que se descartan automáticamente para candidatos Junior
