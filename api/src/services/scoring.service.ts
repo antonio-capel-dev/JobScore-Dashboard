@@ -77,6 +77,8 @@ export async function scoreOffer(offer: ParsedOffer): Promise<ScoringResult>  {
         body: JSON.stringify({
             model: process.env.OPENROUTER_MODEL ?? 'qwen/qwen3.8-27b',
             messages: [{role: 'user', content: prompt}],
+            max_tokens: 1000,
+            messages: [{role: 'user', content: prompt}],
         }),
     });
 
