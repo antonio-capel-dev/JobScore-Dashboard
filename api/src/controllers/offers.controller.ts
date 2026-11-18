@@ -8,6 +8,8 @@ import {
 } from "../db/offers.repository";
 import { procesarFuente, ejecutarPipelineCompleto, procesarTextoCsv } from "../services/pipeline.service";
 import { parseOffersCsvFromText } from "../services/csvImport.service";
+import { identificarSolicitante, type Solicitante } from "../middleware/auth";
+import { vistaPublica } from "../services/offerVisibility";
 
 export async function importOffers(req: Request, res: Response) {
     const fuente = req.params.fuente as string;
@@ -104,8 +106,15 @@ export async function purgeLowScoreOffers(req: Request, res: Response) {
 }
 
 export async function getOffers(req: Request, res: Response) {
-    const data = await obtenerOfertas();
-    res.json(data);
+    const [data, solicitante] = await Promise.all([
+        obtenerOfertas(),
+        // Si no se puede verificar la identidad, se sirve la vista pública
+        identificarSolicitante(req).catch((): Solicitante => 'anonimo'),
+    ]);
+
+    // La respuesta cambia según las credenciales: que ninguna caché mezcle la vista pública con la privada
+    res.setHeader('Vary', 'Authorization, x-api-key');
+    res.json(solicitante === 'propietario' ? data : data.map(vistaPublica));
 }
 
 export async function updateOfferStatus(req: Request, res: Response) {

@@ -4,6 +4,7 @@ import { useOffers } from "./hooks/useOffers";
 import { OfferCard } from "./components/OfferCard";
 import { AuthModal } from "./components/AuthModal";
 import { supabase } from "./api/supabaseClient";
+import { uploadOffersCsv } from "./api/offers";
 import type { Session } from "@supabase/supabase-js";
 import type { Offer } from "./types/offer";
 
@@ -117,10 +118,16 @@ function KanbanColumn({
   );
 }
 
+const REPO_URL = 'https://github.com/antonio-capel-dev/JobScore-Dashboard';
+
 function App() {
-  const { offers: ofertas, cargando, error, recargarOfertas, actualizarEstadoOferta, actualizarNotasOferta } = useOffers();
   const [session, setSession] = useState<Session | null>(null);
-  
+  const [mostrarLogin, setMostrarLogin] = useState(false);
+  const { offers: ofertas, cargando, error, recargarOfertas, actualizarEstadoOferta, actualizarNotasOferta } = useOffers(session);
+
+  // Con sesión se muestran los controles de edición; la API comprueba además que sea el propietario
+  const puedeEditar = session !== null;
+
   // Filtros
   const [busquedaTexto, setBusquedaTexto] = useState('');
   const [modalidadSeleccionada, setModalidadSeleccionada] = useState('todas');
@@ -155,7 +162,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `mis_candidaturas_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `${puedeEditar ? 'mis_candidaturas' : 'ofertas_jobscore'}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -166,23 +173,11 @@ function App() {
     if (!file) return;
 
     try {
+      if (!session) throw new Error('Inicia sesión para subir ofertas');
       setSubiendoCsv(true);
       setMensajeSubida(null);
       const csvText = await file.text();
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-      const res = await fetch(`${apiUrl}/offers/upload`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ csvText })
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Error al procesar el archivo CSV');
-      }
-
-      const data = await res.json();
+      const data = await uploadOffersCsv(session.access_token, csvText);
       setMensajeSubida(`${data.mensaje} Las ofertas irán apareciendo en unos segundos.`);
 
       // Auto-recarga cada 10 segundos durante 3 minutos para ir mostrando las ofertas nuevas
@@ -195,8 +190,8 @@ function App() {
         setMensajeSubida(null);
       }, 180000);
 
-    } catch (err: any) {
-      alert(`Error procesando el archivo CSV: ${err.message}`);
+    } catch (err) {
+      alert(`Error procesando el archivo CSV: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setSubiendoCsv(false);
       if (fileInputRef.current) {
@@ -215,15 +210,35 @@ function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      // Al iniciar sesión se cierra el formulario de acceso
+      if (session) setMostrarLogin(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  // Si la API rechaza un cambio (sesión caducada o cuenta sin permiso), se avisa y no se aplica
+  const cambiarEstado = async (id: number, nuevoEstado: Offer['estado_candidatura']) => {
+    try {
+      await actualizarEstadoOferta(id, nuevoEstado);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo guardar el cambio');
+    }
+  };
+
+  const guardarNotas = async (id: number, notas: string) => {
+    try {
+      await actualizarNotasOferta(id, notas);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudieron guardar las notas');
+    }
+  };
+
   // Métricas calculadas (KPIs)
   const estadisticas = useMemo(() => {
     const total = ofertas.length;
     const topMatches = ofertas.filter(o => o.score >= 75).length;
+    const remotas = ofertas.filter(o => o.modalidad === 'remoto').length;
     const postuladas = ofertas.filter(o => o.estado_candidatura !== null && o.estado_candidatura !== undefined).length;
     const enEntrevista = ofertas.filter(o => o.estado_candidatura === 'entrevista' || o.estado_candidatura === 'oferta').length;
     
@@ -239,7 +254,7 @@ function App() {
       salarioPromedio = Math.round(suma / conSalario.length);
     }
 
-    return { total, topMatches, postuladas, enEntrevista, salarioPromedio };
+    return { total, topMatches, remotas, postuladas, enEntrevista, salarioPromedio };
   }, [ofertas]);
 
   // Fuentes únicas disponibles en el conjunto actual de ofertas
@@ -250,6 +265,9 @@ function App() {
     });
     return ['todas', ...Array.from(setFuentes)];
   }, [ofertas]);
+
+  // En la vista pública no hay fases que filtrar
+  const estadoEfectivo = puedeEditar ? estadoSeleccionado : 'todos';
 
   // Filtrado y Ordenación de ofertas
   const ofertasFiltradas = useMemo(() => {
@@ -266,10 +284,10 @@ function App() {
       const matchScore = oferta.score >= scoreMinimo;
       
       // Filtro Estado
-      const matchEstado = 
-        estadoSeleccionado === 'todos' ? true :
-        estadoSeleccionado === 'sin_postular' ? !oferta.estado_candidatura :
-        oferta.estado_candidatura === estadoSeleccionado;
+      const matchEstado =
+        estadoEfectivo === 'todos' ? true :
+        estadoEfectivo === 'sin_postular' ? !oferta.estado_candidatura :
+        oferta.estado_candidatura === estadoEfectivo;
 
       // Filtro Texto (busca en título, empresa, ubicación y tecnologías del stack)
       const matchTexto = !q || (
@@ -292,7 +310,7 @@ function App() {
       // 'recientes' por defecto (más nuevas arriba)
       return new Date(b.fecha_publicacion || b.fecha_scrape || 0).getTime() - new Date(a.fecha_publicacion || a.fecha_scrape || 0).getTime();
     });
-  }, [ofertas, busquedaTexto, modalidadSeleccionada, fuenteSeleccionada, estadoSeleccionado, scoreMinimo, ordenSeleccionado]);
+  }, [ofertas, busquedaTexto, modalidadSeleccionada, fuenteSeleccionada, estadoEfectivo, scoreMinimo, ordenSeleccionado]);
 
   // Datos para gráficas
   const datosModalidad = [
@@ -309,6 +327,16 @@ function App() {
     { fase: 'Oferta', cantidad: ofertas.filter(oferta => oferta.estado_candidatura === 'oferta').length }
   ];
 
+  // Vista pública: reparto de las ofertas según la puntuación de la IA
+  const datosScore = [
+    { tramo: '< 45', cantidad: ofertas.filter(oferta => oferta.score < 45).length },
+    { tramo: '45–74', cantidad: ofertas.filter(oferta => oferta.score >= 45 && oferta.score < 75).length },
+    { tramo: '≥ 75', cantidad: ofertas.filter(oferta => oferta.score >= 75).length },
+  ];
+
+  // El tablero Kanban es seguimiento personal: solo con sesión
+  const vista = puedeEditar ? vistaActual : 'lista';
+
   const restablecerFiltros = () => {
     setBusquedaTexto('');
     setModalidadSeleccionada('todas');
@@ -317,11 +345,6 @@ function App() {
     setScoreMinimo(0);
     setOrdenSeleccionado('recientes');
   };
-
-  // Si no está autenticado, mostramos la pantalla de login
-  if (!session) {
-    return <AuthModal />;
-  }
 
   return (
     <div className="min-h-screen bg-slate-50/60 p-4 md:p-8 text-slate-900">
@@ -346,26 +369,30 @@ function App() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* Input oculto y botón para subir CSV directamente */}
-            <input 
-              type="file" 
-              accept=".csv" 
-              ref={fileInputRef} 
-              onChange={handleSubirArchivo} 
-              className="hidden" 
-            />
-            
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={subiendoCsv}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-xs disabled:opacity-50"
-              title="Selecciona un archivo CSV de ofertas desde tu ordenador"
-            >
-              <svg className={`w-3.5 h-3.5 ${subiendoCsv ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              <span>{subiendoCsv ? 'Procesando ofertas...' : '📁 Subir CSV'}</span>
-            </button>
+            {puedeEditar && (
+              <>
+                {/* Input oculto y botón para subir CSV directamente */}
+                <input
+                  type="file"
+                  accept=".csv"
+                  ref={fileInputRef}
+                  onChange={handleSubirArchivo}
+                  className="hidden"
+                />
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={subiendoCsv}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shadow-xs disabled:opacity-50"
+                  title="Selecciona un archivo CSV de ofertas desde tu ordenador"
+                >
+                  <svg className={`w-3.5 h-3.5 ${subiendoCsv ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span>{subiendoCsv ? 'Procesando ofertas...' : '📁 Subir CSV'}</span>
+                </button>
+              </>
+            )}
 
             <button
               onClick={exportarCsv}
@@ -390,19 +417,47 @@ function App() {
 
             <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
 
-            <div className="text-right">
-              <span className="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Candidato</span>
-              <span className="text-xs font-bold text-slate-700">{session.user.email}</span>
-            </div>
+            {session ? (
+              <>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Candidato</span>
+                  <span className="text-xs font-bold text-slate-700">{session.user.email}</span>
+                </div>
 
-            <button
-              onClick={() => supabase.auth.signOut()}
-              className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors border border-rose-100"
-            >
-              Salir
-            </button>
+                <button
+                  onClick={() => supabase.auth.signOut()}
+                  className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors border border-rose-100"
+                >
+                  Salir
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setMostrarLogin(true)}
+                className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-700 text-white font-bold text-xs transition-colors"
+              >
+                Iniciar sesión
+              </button>
+            )}
           </div>
         </header>
+
+        {/* Aviso de la vista pública */}
+        {!puedeEditar && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-3 rounded-2xl text-xs font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+            <span>
+              <strong>Vista pública de solo lectura.</strong> Las ofertas se extraen y se puntúan con IA cada día; el seguimiento de candidaturas y las notas son privados.
+            </span>
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-blue-700 hover:text-blue-900 shrink-0"
+            >
+              Ver el código en GitHub ↗
+            </a>
+          </div>
+        )}
 
         {/* Banner de confirmación de subida */}
         {mensajeSubida && (
@@ -435,14 +490,22 @@ function App() {
               <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded group-hover:bg-emerald-600 group-hover:text-white transition-colors">Filtrar</span>
             </div>
             <div className="text-3xl font-black text-emerald-600">{estadisticas.topMatches}</div>
-            <p className="text-[11px] text-slate-500">Alta afinidad con tu perfil</p>
+            <p className="text-[11px] text-slate-500">{puedeEditar ? 'Alta afinidad con tu perfil' : 'Alta afinidad con el perfil del candidato'}</p>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-blue-200/80 shadow-xs space-y-1">
-            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Postulaciones</span>
-            <div className="text-3xl font-black text-blue-600">{estadisticas.postuladas}</div>
-            <p className="text-[11px] text-slate-500">{estadisticas.enEntrevista} en fases avanzadas</p>
-          </div>
+          {puedeEditar ? (
+            <div className="bg-white p-5 rounded-2xl border border-blue-200/80 shadow-xs space-y-1">
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Postulaciones</span>
+              <div className="text-3xl font-black text-blue-600">{estadisticas.postuladas}</div>
+              <p className="text-[11px] text-slate-500">{estadisticas.enEntrevista} en fases avanzadas</p>
+            </div>
+          ) : (
+            <div className="bg-white p-5 rounded-2xl border border-blue-200/80 shadow-xs space-y-1">
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">En remoto</span>
+              <div className="text-3xl font-black text-blue-600">{estadisticas.remotas}</div>
+              <p className="text-[11px] text-slate-500">Ofertas 100% remotas</p>
+            </div>
+          )}
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Salario Promedio</span>
@@ -479,7 +542,8 @@ function App() {
               )}
             </div>
 
-            {/* Selector de Vistas: Lista vs Tablero */}
+            {/* Selector de Vistas: Lista vs Tablero (el tablero es seguimiento personal) */}
+            {puedeEditar && (
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0 self-start lg:self-auto">
               <button
                 onClick={() => setVistaActual('lista')}
@@ -502,11 +566,12 @@ function App() {
                 ▦ Tablero Embudo
               </button>
             </div>
+            )}
 
           </div>
 
           {/* Segunda fila de filtros */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 pt-2 border-t border-slate-100 items-end">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 ${puedeEditar ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-4 pt-2 border-t border-slate-100 items-end`}>
             
             {/* Modalidad */}
             <div className="space-y-1">
@@ -539,7 +604,8 @@ function App() {
               </select>
             </div>
 
-            {/* Estado de Candidatura */}
+            {/* Estado de Candidatura (solo con sesión: en la vista pública las fases son privadas) */}
+            {puedeEditar && (
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-slate-500 uppercase">Fase</label>
               <select 
@@ -555,6 +621,7 @@ function App() {
                 <option value="oferta">Oferta Recibida</option>
               </select>
             </div>
+            )}
 
             {/* Ordenación */}
             <div className="space-y-1">
@@ -622,28 +689,46 @@ function App() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
-            <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              Embudo de Candidaturas Activas
-            </h2>
-            <div className="h-60 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={datosEmbudo} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="fase" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
-                  <Bar dataKey="cantidad" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          {puedeEditar ? (
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
+              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                Embudo de Candidaturas Activas
+              </h2>
+              <div className="h-60 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={datosEmbudo} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="fase" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
+                    <Bar dataKey="cantidad" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
+              <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                Ofertas por puntuación de la IA
+              </h2>
+              <div className="h-60 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={datosScore} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="tramo" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
+                    <Bar dataKey="cantidad" fill="#10b981" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* 5. Contenido Principal: Lista Detallada o Tablero Embudo */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <span>{vistaActual === 'lista' ? 'Listado de Ofertas' : 'Tablero de Candidaturas'}</span>
+              <span>{vista === 'lista' ? 'Listado de Ofertas' : 'Tablero de Candidaturas'}</span>
               <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
                 {ofertasFiltradas.length} encontradas
               </span>
@@ -673,16 +758,17 @@ function App() {
                 🔄 Reintentar conexión
               </button>
             </div>
-          ) : vistaActual === 'lista' ? (
+          ) : vista === 'lista' ? (
             <div className="space-y-4">
               {ofertasFiltradas.length > 0 ? (
                 /* CASO A: HAY OFERTAS QUE COINCIDEN */
                 ofertasFiltradas.map((oferta) => (
-                  <OfferCard 
-                    key={oferta.id} 
-                    oferta={oferta} 
-                    onCambiarEstado={actualizarEstadoOferta}
-                    onGuardarNotas={actualizarNotasOferta}
+                  <OfferCard
+                    key={oferta.id}
+                    oferta={oferta}
+                    editable={puedeEditar}
+                    onCambiarEstado={cambiarEstado}
+                    onGuardarNotas={guardarNotas}
                   />
                 ))
               ) : ofertas.length === 0 ? (
@@ -693,7 +779,11 @@ function App() {
                   </div>
                   <h3 className="font-bold text-slate-800 text-base">La base de datos no tiene ofertas todavía</h3>
                   <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                    Utiliza el botón <strong>📁 Subir CSV</strong> en la cabecera para importar ofertas o ejecuta el scraper.
+                    {puedeEditar ? (
+                      <>Utiliza el botón <strong>📁 Subir CSV</strong> en la cabecera para importar ofertas o ejecuta el scraper.</>
+                    ) : (
+                      <>El pipeline se ejecuta cada día: vuelve más tarde para ver las nuevas ofertas.</>
+                    )}
                   </p>
                 </div>
               ) : (
@@ -722,25 +812,25 @@ function App() {
               <KanbanColumn 
                 titulo="Sin postular" 
                 ofertas={ofertasFiltradas.filter(o => !o.estado_candidatura)} 
-                onCambiarEstado={actualizarEstadoOferta}
+                onCambiarEstado={cambiarEstado}
                 badgeColor="bg-slate-400"
               />
               <KanbanColumn 
                 titulo="Enviadas" 
                 ofertas={ofertasFiltradas.filter(o => o.estado_candidatura === 'enviada')} 
-                onCambiarEstado={actualizarEstadoOferta}
+                onCambiarEstado={cambiarEstado}
                 badgeColor="bg-blue-500"
               />
               <KanbanColumn 
                 titulo="Con Respuesta / Entrevista" 
                 ofertas={ofertasFiltradas.filter(o => o.estado_candidatura === 'respuesta' || o.estado_candidatura === 'entrevista')} 
-                onCambiarEstado={actualizarEstadoOferta}
+                onCambiarEstado={cambiarEstado}
                 badgeColor="bg-purple-500"
               />
               <KanbanColumn 
                 titulo="Oferta Recibida" 
                 ofertas={ofertasFiltradas.filter(o => o.estado_candidatura === 'oferta')} 
-                onCambiarEstado={actualizarEstadoOferta}
+                onCambiarEstado={cambiarEstado}
                 badgeColor="bg-emerald-500"
               />
             </div>
@@ -748,6 +838,8 @@ function App() {
         </section>
 
       </div>
+
+      {mostrarLogin && !session && <AuthModal onClose={() => setMostrarLogin(false)} />}
     </div>
   );
 }
