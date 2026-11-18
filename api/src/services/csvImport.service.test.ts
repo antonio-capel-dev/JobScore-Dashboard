@@ -46,18 +46,17 @@ describe('csvImport.service', () => {
     });
 
     describe('esTecnologiaFueraDeAlcance (Filtro de Stack)', () => {
-        it('debe descartar ofertas de Java (pero NO JavaScript)', () => {
-            expect(esTecnologiaFueraDeAlcance('Desarrollador Java')).toBe(true);
-            expect(esTecnologiaFueraDeAlcance('Java Developer (Arquitectura LRBA)')).toBe(true);
-            expect(esTecnologiaFueraDeAlcance('Junior Java Backend Developer')).toBe(true);
-            // JavaScript NO debe ser descartado
+        it('NO descarta Java, .NET ni C# en el prefiltro: esas ofertas las evalúa el LLM', () => {
+            expect(esTecnologiaFueraDeAlcance('Desarrollador Java')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Junior Java Backend Developer')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Programador .Net')).toBe(false);
             expect(esTecnologiaFueraDeAlcance('Junior JavaScript Developer')).toBe(false);
         });
 
-        it('debe descartar ofertas de .NET, C#, Cobol, SAP', () => {
-            expect(esTecnologiaFueraDeAlcance('Programador .Net')).toBe(true);
+        it('debe descartar ofertas de Cobol, SAP y ABAP', () => {
             expect(esTecnologiaFueraDeAlcance('Programador Cobol')).toBe(true);
             expect(esTecnologiaFueraDeAlcance('Consultor SAP')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('Desarrollador ABAP')).toBe(true);
         });
 
         it('debe descartar ofertas de Data Science / ML / IA especializada', () => {
@@ -67,10 +66,15 @@ describe('csvImport.service', () => {
             expect(esTecnologiaFueraDeAlcance('Computer Vision Engineer (IA)')).toBe(true);
         });
 
-        it('debe descartar ofertas de Ciberseguridad, Audit, DevOps', () => {
+        it('debe descartar ofertas de ciberseguridad y pentesting', () => {
             expect(esTecnologiaFueraDeAlcance('Analista Ciberseguridad Junior')).toBe(true);
-            expect(esTecnologiaFueraDeAlcance('IT&Data Audit&Assurance')).toBe(true);
-            expect(esTecnologiaFueraDeAlcance('DevOps Engineer')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('Cybersecurity Analyst')).toBe(true);
+            expect(esTecnologiaFueraDeAlcance('Penetration Tester Junior')).toBe(true);
+        });
+
+        it('NO descarta Audit ni DevOps en el prefiltro', () => {
+            expect(esTecnologiaFueraDeAlcance('IT&Data Audit&Assurance')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('DevOps Engineer')).toBe(false);
         });
 
         it('NO debe descartar ofertas de React, TypeScript, WordPress, PHP, Node, Python, Full Stack', () => {
@@ -129,16 +133,22 @@ describe('csvImport.service', () => {
             expect(resultado).toHaveLength(0);
         });
 
-        it('debe descartar ofertas con salario mínimo menor a 10.000€', () => {
-            const ofertaBajoSalario = { ...baseOffer, salario_min: 8000 };
+        it('debe descartar ofertas con salario mínimo menor a 5.000€', () => {
+            const ofertaBajoSalario = { ...baseOffer, salario_min: 4000 };
             const resultado = filterOffers([ofertaBajoSalario]);
             expect(resultado).toHaveLength(0);
         });
 
-        it('debe descartar ofertas de tecnologías fuera de alcance (Java, .NET, ML...)', () => {
-            const ofertaJava = { ...baseOffer, titulo_puesto: 'Desarrollador Java' };
+        it('debe conservar ofertas con salario mínimo de 5.000€ o más', () => {
+            const ofertaSalarioValido = { ...baseOffer, salario_min: 8000 };
+            const resultado = filterOffers([ofertaSalarioValido]);
+            expect(resultado).toHaveLength(1);
+        });
+
+        it('debe descartar ofertas de tecnologías fuera de alcance (Cobol, ML Engineer...)', () => {
+            const ofertaCobol = { ...baseOffer, titulo_puesto: 'Programador Cobol' };
             const ofertaML = { ...baseOffer, titulo_puesto: 'Machine Learning Engineer' };
-            const resultado = filterOffers([ofertaJava, ofertaML]);
+            const resultado = filterOffers([ofertaCobol, ofertaML]);
             expect(resultado).toHaveLength(0);
         });
     });
