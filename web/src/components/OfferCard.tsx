@@ -3,8 +3,10 @@ import type { Offer } from "../types/offer";
 
 interface OfferCardProps {
     oferta: Offer;
-    onCambiarEstado: (id: number, nuevoEstado: Offer['estado_candidatura']) => void;
-    onGuardarNotas?: (id: number, notas: string) => void;
+    // false en la vista pública: se ocultan la fase de la candidatura y las notas
+    editable: boolean;
+    onCambiarEstado: (id: number, nuevoEstado: Offer['estado_candidatura']) => void | Promise<void>;
+    onGuardarNotas?: (id: number, notas: string) => void | Promise<void>;
 }
 
 function formatearFecha(fecha: string | null | undefined): string {
@@ -56,7 +58,7 @@ function esNueva(created_at: string | undefined): boolean {
 
 
 
-export function OfferCard({ oferta, onCambiarEstado, onGuardarNotas }: OfferCardProps) {
+export function OfferCard({ oferta, editable, onCambiarEstado, onGuardarNotas }: OfferCardProps) {
     const sc = scoreColor(oferta.score);
     const [expandido, setExpandido] = useState(false);
     const [mostrandoNotas, setMostrandoNotas] = useState(false);
@@ -120,35 +122,39 @@ export function OfferCard({ oferta, onCambiarEstado, onGuardarNotas }: OfferCard
 
                 {/* Controles a la derecha */}
                 <div className="flex items-center gap-3 shrink-0">
-                    {/* Selector de estado */}
-                    <select
-                        value={oferta.estado_candidatura ?? ''}
-                        onChange={async (e) => {
-                            const nuevo = e.target.value === '' ? null : e.target.value as Offer['estado_candidatura'];
-                            await onCambiarEstado(oferta.id, nuevo);
-                        }}
-                        className={`border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${estadoStyle(oferta.estado_candidatura)}`}
-                    >
-                        <option value="">Sin postular</option>
-                        <option value="enviada">Enviada</option>
-                        <option value="respuesta">Respuesta</option>
-                        <option value="entrevista">Entrevista</option>
-                        <option value="oferta">Oferta</option>
-                    </select>
+                    {editable && (
+                        <>
+                            {/* Selector de estado */}
+                            <select
+                                value={oferta.estado_candidatura ?? ''}
+                                onChange={async (e) => {
+                                    const nuevo = e.target.value === '' ? null : e.target.value as Offer['estado_candidatura'];
+                                    await onCambiarEstado(oferta.id, nuevo);
+                                }}
+                                className={`border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${estadoStyle(oferta.estado_candidatura)}`}
+                            >
+                                <option value="">Sin postular</option>
+                                <option value="enviada">Enviada</option>
+                                <option value="respuesta">Respuesta</option>
+                                <option value="entrevista">Entrevista</option>
+                                <option value="oferta">Oferta</option>
+                            </select>
 
-                    {/* Botón Notas */}
-                    <button
-                        onClick={() => setMostrandoNotas(!mostrandoNotas)}
-                        className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-colors flex items-center gap-1 ${
-                            oferta.notas || mostrandoNotas
-                                ? 'bg-amber-50 text-amber-800 border-amber-300'
-                                : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-                        }`}
-                        title="Notas personales sobre esta candidatura"
-                    >
-                        <span>📝</span>
-                        <span>{oferta.notas ? 'Con notas' : 'Notas'}</span>
-                    </button>
+                            {/* Botón Notas */}
+                            <button
+                                onClick={() => setMostrandoNotas(!mostrandoNotas)}
+                                className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-colors flex items-center gap-1 ${
+                                    oferta.notas || mostrandoNotas
+                                        ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                        : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                                }`}
+                                title="Notas personales sobre esta candidatura"
+                            >
+                                <span>📝</span>
+                                <span>{oferta.notas ? 'Con notas' : 'Notas'}</span>
+                            </button>
+                        </>
+                    )}
 
                     {/* Expandir/colapsar detalle IA */}
                     <button
@@ -174,7 +180,7 @@ export function OfferCard({ oferta, onCambiarEstado, onGuardarNotas }: OfferCard
             </div>
 
             {/* Panel expandible — Notas Personales */}
-            {mostrandoNotas && (
+            {editable && mostrandoNotas && (
                 <div className="px-5 pb-4 pt-3 bg-amber-50/50 border-t border-amber-100 space-y-2">
                     <div className="flex items-center justify-between">
                         <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
