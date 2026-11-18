@@ -1,4 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// obtenerRutaCsv no toca la base de datos; se aísla el cliente de Supabase
+// para que el test no dependa de SUPABASE_URL ni de la red.
+vi.mock('../db/supabaseClient', () => ({ supabase: {} }));
+
 import { obtenerRutaCsv } from './pipeline.service';
 
 describe('pipeline.service', () => {
