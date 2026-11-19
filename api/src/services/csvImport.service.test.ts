@@ -43,6 +43,17 @@ describe('csvImport.service', () => {
             expect(esOfertaSenior('Trainee Web Developer', 'Sin experiencia')).toBe(false);
             expect(esOfertaSenior('Prácticas Desarrollo React', null)).toBe(false);
         });
+
+        it('debe descartar 3 años o más, pero no 2 años ni un rango que empieza por debajo', () => {
+            expect(esOfertaSenior('Data Engineer', '3 años')).toBe(true);
+            expect(esOfertaSenior('Data Engineer', '+3 años')).toBe(true);
+            expect(esOfertaSenior('AI Engineer', '3+ years of experience')).toBe(true);
+            expect(esOfertaSenior('Python Developer', '4 years')).toBe(true);
+            expect(esOfertaSenior('Data Engineer', '2 años')).toBe(false);
+            expect(esOfertaSenior('Data Engineer', '1-3 años')).toBe(false);
+            expect(esOfertaSenior('Data Engineer', 'entre 1 y 3 años')).toBe(false);
+            expect(esOfertaSenior('Data Engineer', 'No indicado')).toBe(false);
+        });
     });
 
     describe('esTecnologiaFueraDeAlcance (Filtro de Stack)', () => {
@@ -59,11 +70,16 @@ describe('csvImport.service', () => {
             expect(esTecnologiaFueraDeAlcance('Desarrollador ABAP')).toBe(true);
         });
 
-        it('debe descartar ofertas de Data Science / ML / IA especializada', () => {
+        it('debe descartar Data Science pura e IA muy especializada', () => {
             expect(esTecnologiaFueraDeAlcance('Data Scientist - Song')).toBe(true);
-            expect(esTecnologiaFueraDeAlcance('Machine Learning Engineer')).toBe(true);
-            expect(esTecnologiaFueraDeAlcance('Data Engineer especialista en Databricks')).toBe(true);
             expect(esTecnologiaFueraDeAlcance('Computer Vision Engineer (IA)')).toBe(true);
+        });
+
+        it('NO descarta Data Engineer ni ML Engineer: son el puesto objetivo', () => {
+            expect(esTecnologiaFueraDeAlcance('Junior Data Engineer')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Data Engineer especialista en Databricks')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('Machine Learning Engineer')).toBe(false);
+            expect(esTecnologiaFueraDeAlcance('AI Engineer Junior (LLM)')).toBe(false);
         });
 
         it('debe descartar ofertas de ciberseguridad y pentesting', () => {
@@ -145,11 +161,27 @@ describe('csvImport.service', () => {
             expect(resultado).toHaveLength(1);
         });
 
-        it('debe descartar ofertas de tecnologías fuera de alcance (Cobol, ML Engineer...)', () => {
+        it('debe descartar ofertas de tecnologías fuera de alcance (Cobol, Data Scientist...)', () => {
             const ofertaCobol = { ...baseOffer, titulo_puesto: 'Programador Cobol' };
-            const ofertaML = { ...baseOffer, titulo_puesto: 'Machine Learning Engineer' };
-            const resultado = filterOffers([ofertaCobol, ofertaML]);
+            const ofertaDS = { ...baseOffer, titulo_puesto: 'Data Scientist' };
+            const resultado = filterOffers([ofertaCobol, ofertaDS]);
             expect(resultado).toHaveLength(0);
+        });
+
+        it('debe conservar Junior Data Engineer en Málaga', () => {
+            const ofertaDE = { ...baseOffer, titulo_puesto: 'Junior Data Engineer', experiencia_requerida: null };
+            expect(filterOffers([ofertaDE])).toHaveLength(1);
+        });
+
+        it('debe conservar presencial/híbrido en los alrededores de Málaga', () => {
+            const ofertaPTA = { ...baseOffer, ubicacion: 'Campanillas, Andalucía, España', modalidad: 'presencial' };
+            const ofertaTorremolinos = { ...baseOffer, ubicacion: 'Torremolinos', modalidad: 'hibrido' };
+            expect(filterOffers([ofertaPTA, ofertaTorremolinos])).toHaveLength(2);
+        });
+
+        it('debe descartar presencial en un pueblo fuera de la zona', () => {
+            const ofertaMarbella = { ...baseOffer, ubicacion: 'Marbella, Andalucía, España', modalidad: 'presencial' };
+            expect(filterOffers([ofertaMarbella])).toHaveLength(0);
         });
     });
 });

@@ -25,24 +25,27 @@ export interface ScoringResult {
 }
 
 export function construirPrompt(offer: ParsedOffer): string {
-    return `Eres un evaluador técnico experto en reclutamiento IT. Evalúas ofertas de empleo para Antonio Capel, desarrollador Junior Full-Stack con proyectos reales en producción y visión de negocio.
+    return `Eres un evaluador técnico experto en reclutamiento IT. Evalúas ofertas de empleo para Antonio Capel, perfil junior de IA aplicada y datos con base sólida de desarrollo web y visión de negocio.
 
-Perfiles del candidato:
-- Puesto objetivo: Junior Full-Stack Web Developer / Junior Frontend / Junior Software Engineer.
-- Frontend: React, TypeScript, JavaScript (ES6+), Astro, CSS, Tailwind CSS, WordPress.
-- Backend y APIs: Node.js, Express, Python, PHP 8+, APIs REST, Java (conocimientos base / junior).
-- Bases de datos: SQL, PostgreSQL, Supabase (Auth, Database, Storage).
-- Testing y Calidad: Vitest, testing unitario, Git, GitHub.
-- IA aplicada: LLMs, OpenRouter, agentes de IA, automatización y orquestación de flujos de IA.
-- Idiomas: Inglés C1 (Competencia profesional completa), Francés B2.
-- Formación: Técnico Superior en Desarrollo de Aplicaciones Web (DAW, Digitech), Full Stack Open (Universidad de Helsinki).
-- Experiencia: Desarrollador Full Stack en prácticas (MuMa Bat Company), fundador y gestor de empresa previa (autonomía, visión de negocio y producto).
-- Disponibilidad: 100% Remoto nacional y Málaga presencial/híbrido.
+Perfil del candidato:
+- Puesto objetivo, en este orden: (1) Junior AI / Data Engineer con Python: pipelines de datos, SQL, APIs e integración de modelos en sistemas existentes. (2) Junior GenAI Developer: LLMs, RAG, bases vectoriales y agentes. (3) Full Stack o automatización, solo si tiene un componente directo de IA o de datos.
+- Python y datos: Python, pandas, SQL, PostgreSQL, Supabase, ETL, scikit-learn (en proyectos del curso, no en producción).
+- IA aplicada: LLMs por API (OpenRouter), scoring con LLM en producción en este mismo proyecto, agentes y automatización de flujos. RAG en desarrollo.
+- Web y APIs: Node.js, Express, TypeScript, React, APIs REST.
+- Testing y calidad: Vitest, Git, GitHub.
+- Idiomas: inglés C1, francés B2.
+- Formación: CFGS Desarrollo de Aplicaciones Web (Digitech, 2026); Curso de Especialización en Inteligencia Artificial y Big Data (Digitech, en curso hasta junio de 2027); Full Stack Open (Universidad de Helsinki).
+- Experiencia: prácticas de desarrollo Full Stack en MUMA Bat Company (4 meses, 2026); fundador y director de Movilecom, empresa de telecomunicaciones y seguridad (2018-2022).
+- Disponibilidad: remoto en España, o presencial/híbrido en Málaga y alrededores. Tiene clase de lunes a jueves por la tarde hasta junio de 2027.
 
 Reglas estrictas de evaluación:
-1. Seniority y Experiencia: Si la oferta requiere más de 2 años de experiencia o seniority Senior/Lead/Architect, el score debe ser BAJO (< 45) y veredicto "No".
-2. Match Junior: Si la oferta es Junior, Trainee o Prácticas para desarrollo web o software general (React, TypeScript, JavaScript, Node, PHP, Python, WordPress, Java junior), puntúa ALTO (>= 70) y veredicto "Si".
-3. Tecnologías fuera de alcance: Si la oferta exige como requisito indispensable herramientas de Big Data empresarial pesadas (Hadoop, Scala) o SAP/ABAP/Cobol, el score debe ser menor de 45. Valora positivamente la capacidad de resolver tareas con asistencia de IA.
+1. Seniority: si la oferta pide 3 años de experiencia o más, o seniority Senior/Lead/Architect, el score debe ser menor de 45 y el veredicto "No". Si pide 2 años, el score máximo es 74 ("Quizas") aunque todo lo demás encaje.
+2. Encaje principal: oferta Junior, Trainee o Prácticas con Python, datos (SQL, ETL, pipelines, BI) o IA (LLMs, RAG, agentes, automatización con IA) → score de 75 o más y veredicto "Si".
+3. Desarrollo web: oferta junior web (React, Node, TypeScript) con un componente directo de IA o de datos → score entre 60 y 80. Sin componente de IA ni de datos → score máximo 55.
+4. Stack descartado: Java, Angular, .NET, C#, PHP, WordPress o Salesforce sin Python, datos ni IA → score menor de 45 y veredicto "No".
+5. Fuera de alcance: Data Scientist puro (suele exigir grado cuantitativo), Big Data pesado como requisito indispensable (Hadoop, Spark con Scala) o SAP/ABAP/Cobol → score menor de 45.
+6. Horario: si la oferta exige presencia las tardes de lunes a jueves, dilo en "brechaPrincipal" (no bajes el score solo por eso).
+7. No supongas experiencia que no está en el perfil: si la oferta pide algo que el candidato no tiene, esa es la brecha.
 
 OFERTA A EVALUAR:
 - Puesto: ${offer.titulo_puesto}

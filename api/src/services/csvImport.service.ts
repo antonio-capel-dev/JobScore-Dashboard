@@ -67,7 +67,11 @@ const PATRONES_SENIOR = [
     /5\+?\s*años/i,
     /\+5\s*años/i,
     /4\+?\s*años/i,
-    /\+4\s*años/i
+    /\+4\s*años/i,
+    // 3 años o más también descarta. Un rango como "1-3 años" o "entre 1 y 3 años" no, porque el mínimo es menor
+    /(?<!(?:[\d\-–]|\by|\ba)\s?)\b3\s*\+?\s*(años|years)\b/i,
+    /\+\s*3\s*(años|years)\b/i,
+    /\b[4-9]\s*\+?\s*years\b/i
 ];
 
 export function esOfertaSenior(titulo: string, experiencia: string | null): boolean {
@@ -76,14 +80,14 @@ export function esOfertaSenior(titulo: string, experiencia: string | null): bool
 }
 
 // Tecnologías y roles claramente fuera del stack de Antonio — descarte sin gastar LLM
-// Criterio: dominio muy especializado que no se aprende en semanas ni con IA
+// Criterio: dominio muy especializado que no se aprende en semanas ni con IA.
+// Data Engineer y ML Engineer NO van aquí: son el objetivo principal (AI / Data Engineer junior)
+// y el seniority ya lo filtra esOfertaSenior. Data Scientist sí, porque el mercado lo filtra por grado cuantitativo.
 const TITULOS_FUERA_DE_ALCANCE = [
     /\bcobol\b/i,
     /\bsap\b/i,
     /\babap\b/i,
     /\bdata\s*scientist\b/i,
-    /\bdata\s*engineer\b/i,
-    /\bmachine\s*learning\s*engineer\b/i,
     /\bdeep\s*learning\b/i,
     /\bcomputer\s*vision\b/i,
     /\bciberseguridad\b/i,
@@ -99,6 +103,27 @@ const TITULOS_FUERA_DE_ALCANCE = [
 
 export function esTecnologiaFueraDeAlcance(titulo: string): boolean {
     return TITULOS_FUERA_DE_ALCANCE.some(patron => patron.test(titulo));
+}
+
+// Zona donde Antonio puede ir presencial o en híbrido: Málaga capital y alrededores con buena conexión
+const ZONA_PRESENCIAL = [
+    'malaga',
+    'málaga',
+    'campanillas',
+    'parque tecnológico',
+    'parque tecnologico',
+    'torremolinos',
+    'benalmádena',
+    'benalmadena',
+    'rincón de la victoria',
+    'rincon de la victoria',
+    'alhaurín de la torre',
+    'alhaurin de la torre',
+];
+
+export function estaEnZonaPresencial(ubicacion: string): boolean {
+    const texto = (ubicacion || '').toLowerCase();
+    return ZONA_PRESENCIAL.some(lugar => texto.includes(lugar));
 }
 
 // Filtro pre-scoring: descarta ofertas no viables antes de llamar al LLM
@@ -121,12 +146,11 @@ export function filterOffers(offers: ParsedOffer[]): ParsedOffer[] {
         }
 
         // 3. Filtro por Ubicación y Modalidad (Null-safe)
-        const ubicacionLower = (offer.ubicacion || '').toLowerCase();
         const modalidadLower = (offer.modalidad || '').toLowerCase();
 
         if (modalidadLower === 'hibrido' || modalidadLower === 'presencial') {
-            // Presencial o híbrido solo si es en Málaga
-            if (!ubicacionLower.includes('malaga') && !ubicacionLower.includes('málaga')) {
+            // Presencial o híbrido solo si es en Málaga o alrededores
+            if (!estaEnZonaPresencial(offer.ubicacion)) {
                 continue;
             }
         }
