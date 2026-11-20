@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Offer } from "../types/offer";
+import { puntuadaConPerfilAnterior } from "../utils/vistaPublica";
 
 interface OfferCardProps {
     oferta: Offer;
@@ -85,6 +86,14 @@ export function OfferCard({ oferta, editable, onCambiarEstado, onGuardarNotas }:
                         {esNueva(oferta.created_at) && (
                         <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
                         Nueva
+                        </span>
+                        )}
+                        {puntuadaConPerfilAnterior(oferta) && (
+                        <span
+                            className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200"
+                            title="Nota calculada con el perfil anterior (desarrollo web), antes del cambio a IA y datos del 20-nov-2026"
+                        >
+                        Perfil anterior
                         </span>
                         )}
                     </div>

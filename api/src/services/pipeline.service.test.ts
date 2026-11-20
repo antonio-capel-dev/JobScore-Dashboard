@@ -107,6 +107,20 @@ describe('pipeline.service', () => {
             expect(resultado.saved).toBe(1);
         });
 
+        it('puntúa una sola vez una URL que viene repetida en el mismo CSV', async () => {
+            vi.mocked(scoreOffer).mockResolvedValue(nota(80, 'Si'));
+
+            const resultado = await procesarOfertas([
+                oferta('Data Engineer', 'misma-url'),
+                oferta('Data Engineer (copia)', 'misma-url'),
+            ]);
+
+            expect(scoreOffer).toHaveBeenCalledTimes(1);
+            expect(existeOfertaPorUrl).toHaveBeenCalledTimes(1);
+            expect(resultado.omitidas).toBe(1);
+            expect(resultado.errors).toBe(0);
+        });
+
         it('respeta el tope por ejecución, empieza por las más afines y deja el resto pendiente', async () => {
             process.env.SCORING_MAX_POR_EJECUCION = '2';
             vi.mocked(scoreOffer).mockResolvedValue(nota(80, 'Si'));
