@@ -43,7 +43,8 @@ describe('scoring.service', () => {
 
         it('debe incluir el perfil objetivo del candidato en el prompt', () => {
             const prompt = construirPrompt(mockOffer);
-            expect(prompt).toContain('Junior Full-Stack Web Developer');
+            expect(prompt).toContain('Junior AI / Data Engineer');
+            expect(prompt).toContain('Python');
             expect(prompt).toContain('React');
             expect(prompt).toContain('Node.js');
             expect(prompt).toContain('TypeScript');
