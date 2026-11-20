@@ -67,8 +67,13 @@ export async function uploadOffersCsv(req: Request, res: Response) {
         job.duplicates = resultado.omitidas;
         job.discarded = resultado.discardedByScore ?? 0;
         job.errors = resultado.errors ?? 0;
+        job.pending = resultado.pendientes ?? 0;
         job.status = 'completed';
-        job.message = job.errors > 0 ? 'Importación finalizada con errores en algunas ofertas.' : 'Importación finalizada';
+        job.message = job.errors > 0
+            ? 'Importación finalizada con errores en algunas ofertas.'
+            : job.pending > 0
+                ? `Importación parcial: quedan ${job.pending} ofertas para la siguiente subida (cupo diario del modelo).`
+                : 'Importación finalizada';
 
         console.log(`[Upload] Finalizado: `, job); 
         

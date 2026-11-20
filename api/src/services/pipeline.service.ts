@@ -3,7 +3,7 @@ import path from "node:path";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { ParsedOffer, parseOffersCsv, parseOffersCsvFromText } from "./csvImport.service";
-import { scoreOffer, ScoringResult } from "./scoring.service";
+import { scoreOffer, ScoringResult, LimiteProveedorError } from "./scoring.service";
 import { sendOfferNotification } from "./telegram.service";
 import { existeOfertaPorUrl, guardarOferta } from "../db/offers.repository";
 
@@ -20,7 +20,29 @@ export interface ProcessSourceResult {
     errors?: number;
     saved?: number;
     results?: ScoringResult[];
+    // Ofertas nuevas que no se puntuaron en esta ejecución (cupo diario); se intentan en la siguiente
+    pendientes?: number;
 }
+
+const PALABRAS_PRIORITARIAS = /\b(python|data|datos|ia|ai|ml|llm|llms|rag|genai|machine learning|analyst|analista|bi|etl|automatizaci[oó]n|automation)\b/gi;
+
+/**
+ * Cuánto se parece una oferta al objetivo (IA, datos, Python). Las coincidencias en el título valen el doble.
+ * Sirve para gastar primero el cupo diario del modelo en las ofertas con más pinta de encajar.
+ */
+export function prioridadOferta(offer: ParsedOffer): number {
+    const contar = (texto: string) => new Set((texto.match(PALABRAS_PRIORITARIAS) ?? []).map(p => p.toLowerCase())).size;
+    return contar(offer.titulo_puesto ?? '') * 2 + contar((offer.stack_tecnologico ?? []).join(' '));
+}
+
+function leerEntero(nombre: string, porDefecto: number): number {
+    const valor = Number(process.env[nombre]);
+    return process.env[nombre] !== undefined && process.env[nombre] !== '' && Number.isFinite(valor) && valor >= 0
+        ? valor
+        : porDefecto;
+}
+
+const esperar = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 
 export function obtenerRutaCsv(fuente: string): string | null {
@@ -81,23 +103,39 @@ export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSo
     let guardadas = 0;
     let descartadasPorScore = 0;
     let fallidas = 0;
+    // Los modelos gratuitos tienen cupo diario: se limita cuántas ofertas se puntúan por ejecución
+    const maxLlamadas = leerEntero('SCORING_MAX_POR_EJECUCION', 40);
+    // 20 peticiones por minuto como máximo: una cada 3 s, con margen
+    const esperaMs = leerEntero('SCORING_DELAY_MS', 3500);
 
+    // 1. Fuera las que ya están en la base de datos (también las descartadas), sin gastar llamadas al modelo
+    const nuevas: ParsedOffer[] = [];
     for (const offer of ofertas) {
-        try {
-            const yaExiste = await existeOfertaPorUrl(offer.url_oferta);
-            if (yaExiste) {
-                omitidas++;
-                continue;
-            }
+        if (await existeOfertaPorUrl(offer.url_oferta)) {
+            omitidas++;
+        } else {
+            nuevas.push(offer);
+        }
+    }
 
+    // 2. Primero las que más se parecen al objetivo; el resto se queda para la siguiente ejecución
+    const ordenadas = [...nuevas].sort((a, b) => prioridadOferta(b) - prioridadOferta(a));
+    const aPuntuar = ordenadas.slice(0, maxLlamadas);
+    let pendientes = ordenadas.length - aPuntuar.length;
+
+    for (let i = 0; i < aPuntuar.length; i++) {
+        const offer = aPuntuar[i];
+        try {
             const ofertaScored = await scoreOffer(offer);
             resultados.push(ofertaScored);
 
+            // Se guarda también la descartada para no volver a puntuarla mañana; la vista solo muestra score >= 45
+            await guardarOferta(offer, ofertaScored);
+
             if (ofertaScored.score >= 45 && ofertaScored.veredicto !== 'No') {
-                await guardarOferta(offer, ofertaScored);
                 guardadas++;
                 try {
-                await sendOfferNotification(offer, ofertaScored);
+                    await sendOfferNotification(offer, ofertaScored);
                 } catch (error) {
                     console.error('Oferta guardada, pero falló la notificación de Telegram', error)
                 }
@@ -105,15 +143,19 @@ export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSo
                 descartadasPorScore++;
                 console.log(`[Pipeline] Oferta descartada por afinidad insuficiente (${ofertaScored.score} pts): ${offer.titulo_puesto}`);
             }
-
-            await new Promise(resolve => setTimeout(resolve, 2500));
         } catch (error) {
+            if (error instanceof LimiteProveedorError) {
+                pendientes += aPuntuar.length - i;
+                console.warn(`[Pipeline] Límite de OpenRouter alcanzado (${error.status}). Quedan ${pendientes} ofertas para la siguiente ejecución.`);
+                break;
+            }
             fallidas++;
             console.log(`[Pipeline] Error procesando oferta:`, error);
-                
-            await new Promise(resolve => setTimeout(resolve, 4000));
         }
-        
+
+        if (i < aPuntuar.length - 1) {
+            await esperar(esperaMs);
+        }
     }
 
     return {
@@ -123,7 +165,8 @@ export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSo
         resultados,
         saved: guardadas,
         discardedByScore: descartadasPorScore,
-        errors: fallidas
+        errors: fallidas,
+        pendientes
     };
 }
 

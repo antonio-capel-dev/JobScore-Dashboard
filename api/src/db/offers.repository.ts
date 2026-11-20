@@ -65,9 +65,11 @@ export async function guardarOferta(offer: ParsedOffer, scoring: ScoringResult) 
 }
 
 export async function obtenerOfertas() {
+    // Las descartadas por la IA (score < 45) se guardan solo para no volver a puntuarlas; no se muestran
     const { data, error } = await supabase
         .from('offers')
         .select("*")
+        .or('score.is.null,score.gte.45')
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -78,7 +80,8 @@ export async function obtenerOfertas() {
     return data;
 }
 
-// Purga de ofertas con bajo score (< 45) que no tengan candidatura activa
+// Purga de ofertas con bajo score (< 45) que no tengan candidatura activa.
+// Ojo: lo purgado vuelve a puntuarse (y a gastar cupo del modelo) si llega en una subida posterior.
 export async function purgarOfertasDescartadas(): Promise<number> {
     const { data, error } = await supabase
         .from('offers')

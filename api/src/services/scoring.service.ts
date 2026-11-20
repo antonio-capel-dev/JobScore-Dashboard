@@ -1,19 +1,42 @@
 import 'dotenv/config';
 import { ParsedOffer } from "./csvImport.service";
 
+// Router de OpenRouter que elige entre los modelos gratuitos disponibles (la lista cambia a menudo).
+// Se puede fijar otro modelo con la variable OPENROUTER_MODEL.
+export const MODELO_POR_DEFECTO = 'openrouter/free';
+
+// Cupo agotado (429) o sin saldo (402): no tiene sentido seguir llamando en esta ejecución,
+// porque los intentos fallidos también cuentan para el límite diario.
+export class LimiteProveedorError extends Error {
+    constructor(message: string, public readonly status: number) {
+        super(message);
+        this.name = 'LimiteProveedorError';
+    }
+}
+
 export function extraerJson(content:string):string {
     const limpio = content.trim();
 
-    if (!limpio.startsWith('```')) {
+    if (limpio.startsWith('```')) {
+        const finPrimeraLinea = limpio.indexOf('\n');
+        const sinApertura = limpio.slice(finPrimeraLinea + 1);
+        const inicioCierre = sinApertura.lastIndexOf('```');
+        const sinCierre = sinApertura.slice(0, inicioCierre);
+        return sinCierre.trim();
+    }
+
+    if (limpio.startsWith('{')) {
         return limpio;
     }
 
-    const finPrimeraLinea = limpio.indexOf('\n');
-    const sinApertura = limpio.slice(finPrimeraLinea + 1);
-    const inicioCierre = sinApertura.lastIndexOf('```');
-    const sinCierre = sinApertura.slice(0, inicioCierre);
-    const resultado = sinCierre.trim();
-    return resultado;
+    // Algunos modelos gratuitos añaden texto antes o después del JSON
+    const inicio = limpio.indexOf('{');
+    const fin = limpio.lastIndexOf('}');
+    if (inicio !== -1 && fin > inicio) {
+        return limpio.slice(inicio, fin + 1);
+    }
+
+    return limpio;
 }
 
 export interface ScoringResult {
@@ -78,20 +101,28 @@ export async function scoreOffer(offer: ParsedOffer): Promise<ScoringResult>  {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            model: process.env.OPENROUTER_MODEL ?? 'qwen/qwen3.8-27b',
+            model: process.env.OPENROUTER_MODEL || MODELO_POR_DEFECTO,
             messages: [{role: 'user', content: prompt}],
             max_tokens: 1000,
         }),
     });
 
-    const data = await respuesta.json();
+    const data = await respuesta.json().catch(() => ({}));
+
+    if (respuesta.status === 429 || respuesta.status === 402) {
+        console.error("Límite de OpenRouter alcanzado:", data?.error?.message);
+        throw new LimiteProveedorError(data?.error?.message || 'Límite de OpenRouter alcanzado', respuesta.status);
+    }
 
     if (!respuesta.ok || !data.choices) {
         console.error("Respuesta de error de OpenRouter:", data);
         throw new Error(data.error?.message || "Error en la llamada a OpenRouter");
     }
 
-    const content = data.choices[0].message.content;
+    const content = data.choices[0]?.message?.content;
+    if (typeof content !== 'string' || !content.trim()) {
+        throw new Error('El modelo devolvió una respuesta vacía');
+    }
     const contenidoExtraido = extraerJson(content);
     const parsed = JSON.parse(contenidoExtraido);
 
