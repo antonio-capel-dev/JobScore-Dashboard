@@ -44,8 +44,9 @@ async function enviarOfertas() {
 }
 
 async function esperarResultados(jobId, baseUrl) {
-    const MAX_INTENTOS = 40;
-    const ESPERA_MS = 3000;
+    // Hasta 10 minutos: con el modelo gratuito se puntúa una oferta cada pocos segundos
+    const MAX_INTENTOS = 120;
+    const ESPERA_MS = 5000;
 
     for (let i = 0; i<MAX_INTENTOS;i++) {
         await new Promise(resolve => setTimeout(resolve, ESPERA_MS));
@@ -61,11 +62,12 @@ async function esperarResultados(jobId, baseUrl) {
             console.log(`Duplicadas: ${job.duplicates}`);
             console.log(`Descartadas: ${job.discarded}`);
             console.log(`Errores: ${job.errors}`);
+            console.log(`Pendientes para la siguiente subida: ${job.pending ?? 0}`);
             return;
         }
     }
 
-    console.log('[JobScore Sync] Tiempo de espera agotado sin respuesta final.');
+    console.log('[JobScore Sync] Tiempo de espera agotado sin respuesta final. El servidor sigue procesando: el resultado aparecerá en el dashboard.');
 }
 
 enviarOfertas();

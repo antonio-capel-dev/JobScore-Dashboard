@@ -5,6 +5,8 @@ export interface ImportJob {
     duplicates: number;
     discarded: number;
     errors: number;
+    // Ofertas nuevas que quedan para la siguiente subida por el cupo diario del modelo
+    pending?: number;
     message: string;
 }
 
