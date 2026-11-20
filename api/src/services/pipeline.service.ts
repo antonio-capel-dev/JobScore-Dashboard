@@ -108,9 +108,17 @@ export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSo
     // 20 peticiones por minuto como máximo: una cada 3 s, con margen
     const esperaMs = leerEntero('SCORING_DELAY_MS', 3500);
 
-    // 1. Fuera las que ya están en la base de datos (también las descartadas), sin gastar llamadas al modelo
+    // 1. Fuera las que ya están en la base de datos (también las descartadas) y las URL repetidas dentro
+    //    del mismo CSV, sin gastar llamadas al modelo: la segunda copia fallaría contra la restricción UNIQUE
     const nuevas: ParsedOffer[] = [];
+    const urlsVistas = new Set<string>();
     for (const offer of ofertas) {
+        if (urlsVistas.has(offer.url_oferta)) {
+            omitidas++;
+            continue;
+        }
+        urlsVistas.add(offer.url_oferta);
+
         if (await existeOfertaPorUrl(offer.url_oferta)) {
             omitidas++;
         } else {

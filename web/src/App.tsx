@@ -7,6 +7,7 @@ import { supabase } from "./api/supabaseClient";
 import { uploadOffersCsv } from "./api/offers";
 import type { Session } from "@supabase/supabase-js";
 import type { Offer } from "./types/offer";
+import { DIAS_VENTANA_PUBLICA, estaEnVentanaPublica } from "./utils/vistaPublica";
 
 function SkeletonCard() {
   return (
@@ -123,10 +124,24 @@ const REPO_URL = 'https://github.com/antonio-capel-dev/JobScore-Dashboard';
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [mostrarLogin, setMostrarLogin] = useState(false);
-  const { offers: ofertas, cargando, error, recargarOfertas, actualizarEstadoOferta, actualizarNotasOferta } = useOffers(session);
+  const { offers: todasLasOfertas, cargando, error, recargarOfertas, actualizarEstadoOferta, actualizarNotasOferta } = useOffers(session);
 
   // Con sesión se muestran los controles de edición; la API comprueba además que sea el propietario
   const puedeEditar = session !== null;
+
+  // La vista pública enseña el mercado actual (últimos 30 días); el histórico se abre a petición.
+  // El propietario ve siempre todo, porque sigue candidaturas antiguas.
+  const [verHistorico, setVerHistorico] = useState(false);
+  const ofertasRecientes = useMemo(
+    () => todasLasOfertas.filter(o => estaEnVentanaPublica(o)),
+    [todasLasOfertas]
+  );
+  const ofertas = puedeEditar || verHistorico ? todasLasOfertas : ofertasRecientes;
+  const ofertasHistoricas = todasLasOfertas.length - ofertasRecientes.length;
+
+  // Primera carga sin datos: el backend gratuito de Render puede estar dormido
+  const arrancandoServidor = cargando && todasLasOfertas.length === 0;
+  const kpi = (valor: string | number) => (arrancandoServidor ? '—' : valor);
 
   // Filtros
   const [busquedaTexto, setBusquedaTexto] = useState('');
@@ -253,8 +268,9 @@ function App() {
       }, 0);
       salarioPromedio = Math.round(suma / conSalario.length);
     }
+    const ofertasConSalario = conSalario.length;
 
-    return { total, topMatches, remotas, postuladas, enEntrevista, salarioPromedio };
+    return { total, topMatches, remotas, postuladas, enEntrevista, salarioPromedio, ofertasConSalario };
   }, [ofertas]);
 
   // Fuentes únicas disponibles en el conjunto actual de ofertas
@@ -446,16 +462,41 @@ function App() {
         {!puedeEditar && (
           <div className="bg-blue-50 border border-blue-200 text-blue-900 px-4 py-3 rounded-2xl text-xs font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
             <span>
-              <strong>Vista pública de solo lectura.</strong> Las ofertas se extraen y se puntúan con IA cada día; el seguimiento de candidaturas y las notas son privados.
+              <strong>Vista pública de solo lectura.</strong> Las ofertas se extraen y se puntúan con IA cada día; el seguimiento de candidaturas y las notas son privados.{' '}
+              {verHistorico
+                ? 'Estás viendo también el histórico.'
+                : `Se muestran las publicadas en los últimos ${DIAS_VENTANA_PUBLICA} días.`}
             </span>
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-bold text-blue-700 hover:text-blue-900 shrink-0"
-            >
-              Ver el código en GitHub ↗
-            </a>
+            <div className="flex items-center gap-4 shrink-0">
+              {ofertasHistoricas > 0 && (
+                <button
+                  onClick={() => setVerHistorico(v => !v)}
+                  className="font-bold text-blue-700 hover:text-blue-900"
+                >
+                  {verHistorico ? 'Ver solo las recientes' : `Ver histórico (${ofertasHistoricas})`}
+                </button>
+              )}
+              <a
+                href={REPO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-blue-700 hover:text-blue-900"
+              >
+                Ver el código en GitHub ↗
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Arranque en frío del backend gratuito: mejor explicarlo que enseñar ceros */}
+        {arrancandoServidor && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl text-xs font-medium shadow-2xs flex items-center gap-2">
+            <svg className="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>
+              <strong>Despertando el servidor…</strong> La API está en el plan gratuito de Render y se duerme cuando no tiene uso: la primera carga puede tardar hasta un minuto.
+            </span>
           </div>
         )}
 
@@ -476,8 +517,10 @@ function App() {
         <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Ofertas</span>
-            <div className="text-3xl font-black text-slate-900">{estadisticas.total}</div>
-            <p className="text-[11px] text-slate-500">Extraídas y evaluadas con IA</p>
+            <div className="text-3xl font-black text-slate-900">{kpi(estadisticas.total)}</div>
+            <p className="text-[11px] text-slate-500">
+              {puedeEditar || verHistorico ? 'Extraídas y evaluadas con IA' : `Publicadas en los últimos ${DIAS_VENTANA_PUBLICA} días`}
+            </p>
           </div>
 
           <div 
@@ -489,30 +532,34 @@ function App() {
               <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Top Match (≥75)</span>
               <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded group-hover:bg-emerald-600 group-hover:text-white transition-colors">Filtrar</span>
             </div>
-            <div className="text-3xl font-black text-emerald-600">{estadisticas.topMatches}</div>
+            <div className="text-3xl font-black text-emerald-600">{kpi(estadisticas.topMatches)}</div>
             <p className="text-[11px] text-slate-500">{puedeEditar ? 'Alta afinidad con tu perfil' : 'Alta afinidad con el perfil del candidato'}</p>
           </div>
 
           {puedeEditar ? (
             <div className="bg-white p-5 rounded-2xl border border-blue-200/80 shadow-xs space-y-1">
               <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Postulaciones</span>
-              <div className="text-3xl font-black text-blue-600">{estadisticas.postuladas}</div>
+              <div className="text-3xl font-black text-blue-600">{kpi(estadisticas.postuladas)}</div>
               <p className="text-[11px] text-slate-500">{estadisticas.enEntrevista} en fases avanzadas</p>
             </div>
           ) : (
             <div className="bg-white p-5 rounded-2xl border border-blue-200/80 shadow-xs space-y-1">
               <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">En remoto</span>
-              <div className="text-3xl font-black text-blue-600">{estadisticas.remotas}</div>
+              <div className="text-3xl font-black text-blue-600">{kpi(estadisticas.remotas)}</div>
               <p className="text-[11px] text-slate-500">Ofertas 100% remotas</p>
             </div>
           )}
 
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Salario Promedio</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Salario medio</span>
             <div className="text-3xl font-black text-slate-900">
-              {estadisticas.salarioPromedio > 0 ? `${estadisticas.salarioPromedio.toLocaleString()}€` : 'N/A'}
+              {kpi(estadisticas.salarioPromedio > 0 ? `${estadisticas.salarioPromedio.toLocaleString('es-ES')}€` : 'N/A')}
             </div>
-            <p className="text-[11px] text-slate-500">Media del mercado detectada</p>
+            <p className="text-[11px] text-slate-500">
+              {estadisticas.ofertasConSalario === 0
+                ? 'Ninguna oferta publica salario'
+                : `De ${estadisticas.ofertasConSalario} ${estadisticas.ofertasConSalario === 1 ? 'oferta que publica' : 'ofertas que publican'} salario${estadisticas.ofertasConSalario < 10 ? ' (muestra pequeña)' : ''}`}
+            </p>
           </div>
         </section>
 
@@ -777,7 +824,19 @@ function App() {
                   <div className="w-12 h-12 rounded-full bg-blue-50 mx-auto flex items-center justify-center text-xl text-blue-600">
                     📭
                   </div>
-                  <h3 className="font-bold text-slate-800 text-base">La base de datos no tiene ofertas todavía</h3>
+                  <h3 className="font-bold text-slate-800 text-base">
+                    {ofertasHistoricas > 0 && !verHistorico
+                      ? `No hay ofertas publicadas en los últimos ${DIAS_VENTANA_PUBLICA} días`
+                      : 'La base de datos no tiene ofertas todavía'}
+                  </h3>
+                  {ofertasHistoricas > 0 && !verHistorico && (
+                    <button
+                      onClick={() => setVerHistorico(true)}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                    >
+                      Ver histórico ({ofertasHistoricas})
+                    </button>
+                  )}
                   <p className="text-xs text-slate-400 max-w-sm mx-auto">
                     {puedeEditar ? (
                       <>Utiliza el botón <strong>📁 Subir CSV</strong> en la cabecera para importar ofertas o ejecuta el scraper.</>
