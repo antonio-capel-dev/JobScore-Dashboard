@@ -1,0 +1,20 @@
+# El plan gratuito de Render duerme la API tras ~15 min sin tráfico y tarda casi un minuto en despertar.
+# Un ping cada 14 min en horario de uso (7:00–22:59 en Madrid, invierno) evita el arranque en frío del
+# dashboard y que una importación en segundo plano se corte a medias.
+# Ojo: GitHub desactiva los workflows programados de un repo público tras 60 días sin actividad.
+name: Mantener despierta la API
+
+on:
+  schedule:
+    - cron: '*/14 6-21 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping a /health
+        run: curl -fsS --retry 2 --retry-delay 20 --max-time 90 https://jobscore-dashboard.onrender.com/health
