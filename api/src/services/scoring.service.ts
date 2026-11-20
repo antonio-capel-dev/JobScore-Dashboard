@@ -5,6 +5,13 @@ import { ParsedOffer } from "./csvImport.service";
 // Se puede fijar otro modelo con la variable OPENROUTER_MODEL.
 export const MODELO_POR_DEFECTO = 'openrouter/free';
 
+export const MAX_TOKENS_POR_DEFECTO = 4000;
+
+export function maxTokensRespuesta(): number {
+    const valor = Number(process.env.SCORING_MAX_TOKENS);
+    return Number.isInteger(valor) && valor > 0 ? valor : MAX_TOKENS_POR_DEFECTO;
+}
+
 // Cupo agotado (429) o sin saldo (402): no tiene sentido seguir llamando en esta ejecución,
 // porque los intentos fallidos también cuentan para el límite diario.
 export class LimiteProveedorError extends Error {
@@ -103,7 +110,11 @@ export async function scoreOffer(offer: ParsedOffer): Promise<ScoringResult>  {
         body: JSON.stringify({
             model: process.env.OPENROUTER_MODEL || MODELO_POR_DEFECTO,
             messages: [{role: 'user', content: prompt}],
-            max_tokens: 1000,
+            // Los modelos gratuitos no cobran por token: margen de sobra para que un modelo que razona
+            // no se quede sin espacio para el JSON (si lo agota todo, la respuesta llega vacía)
+            max_tokens: maxTokensRespuesta(),
+            // Razonamiento corto (~20 % de max_tokens) y sin devolverlo: solo interesa el JSON
+            reasoning: { effort: 'low', exclude: true },
         }),
     });
 
@@ -121,7 +132,8 @@ export async function scoreOffer(offer: ParsedOffer): Promise<ScoringResult>  {
 
     const content = data.choices[0]?.message?.content;
     if (typeof content !== 'string' || !content.trim()) {
-        throw new Error('El modelo devolvió una respuesta vacía');
+        const motivo = data.choices[0]?.finish_reason ?? 'desconocido';
+        throw new Error(`El modelo devolvió una respuesta vacía (finish_reason: ${motivo}, modelo: ${data.model ?? 'desconocido'})`);
     }
     const contenidoExtraido = extraerJson(content);
     const parsed = JSON.parse(contenidoExtraido);

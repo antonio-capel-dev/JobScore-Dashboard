@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { extraerJson, construirPrompt, scoreOffer, LimiteProveedorError, MODELO_POR_DEFECTO } from './scoring.service';
+import { extraerJson, construirPrompt, scoreOffer, LimiteProveedorError, MODELO_POR_DEFECTO, MAX_TOKENS_POR_DEFECTO } from './scoring.service';
 import type { ParsedOffer } from './csvImport.service';
 
 describe('scoring.service', () => {
@@ -49,6 +49,7 @@ describe('scoring.service', () => {
         afterEach(() => {
             vi.unstubAllGlobals();
             delete process.env.OPENROUTER_MODEL;
+            delete process.env.SCORING_MAX_TOKENS;
         });
 
         const respuestaOk = (contenido: string) => ({
@@ -68,6 +69,27 @@ describe('scoring.service', () => {
             expect(MODELO_POR_DEFECTO).toBe('openrouter/free');
             expect(resultado.score).toBe(80);
             expect(resultado.veredicto).toBe('Si');
+        });
+
+        it('limita el razonamiento y deja margen de tokens para que el JSON no llegue vacío', async () => {
+            const fetchMock = vi.fn().mockResolvedValue(respuestaOk('{"score": 80, "veredicto": "Si"}'));
+            vi.stubGlobal('fetch', fetchMock);
+
+            await scoreOffer(oferta);
+
+            const cuerpo = JSON.parse(fetchMock.mock.calls[0][1].body);
+            expect(cuerpo.max_tokens).toBe(MAX_TOKENS_POR_DEFECTO);
+            expect(cuerpo.reasoning).toEqual({ effort: 'low', exclude: true });
+        });
+
+        it('respeta SCORING_MAX_TOKENS si está configurado', async () => {
+            process.env.SCORING_MAX_TOKENS = '6000';
+            const fetchMock = vi.fn().mockResolvedValue(respuestaOk('{"score": 80, "veredicto": "Si"}'));
+            vi.stubGlobal('fetch', fetchMock);
+
+            await scoreOffer(oferta);
+
+            expect(JSON.parse(fetchMock.mock.calls[0][1].body).max_tokens).toBe(6000);
         });
 
         it('respeta OPENROUTER_MODEL si está configurado', async () => {
@@ -96,6 +118,7 @@ describe('scoring.service', () => {
             const error = await scoreOffer(oferta).catch(e => e);
             expect(error).toBeInstanceOf(Error);
             expect(error).not.toBeInstanceOf(LimiteProveedorError);
+            expect(error.message).toContain('finish_reason');
         });
     });
 
