@@ -17,6 +17,22 @@ export async function existeOfertaPorUrl(url: string): Promise<boolean> {
     return data !== null;
 }
 
+// Puestos guardados en los últimos días, para detectar la misma oferta publicada en otro portal con otra URL
+export async function obtenerPuestosRecientes(dias = 45): Promise<{ titulo_puesto: string; empresa: string | null }[]> {
+    const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
+        .from('offers')
+        .select('titulo_puesto, empresa')
+        .gte('created_at', desde);
+
+    if (error) {
+        console.log('Error leyendo puestos recientes:', error);
+        return [];
+    }
+
+    return data ?? [];
+}
+
 export async function actualizarEstadoCandidatura(id: number, estado?: string | null, notas?: string | null) {
     const payload: Record<string, any> = {};
     if (estado !== undefined) {

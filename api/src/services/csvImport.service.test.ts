@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizarFechaPublicacion, esOfertaSenior, esTecnologiaFueraDeAlcance, filterOffers, type ParsedOffer } from './csvImport.service';
+import { normalizarFechaPublicacion, esOfertaSenior, esTecnologiaFueraDeAlcance, filterOffers, parseOffersCsvFromText, type ParsedOffer } from './csvImport.service';
 
 describe('csvImport.service', () => {
     describe('normalizarFechaPublicacion', () => {
@@ -42,6 +42,15 @@ describe('csvImport.service', () => {
             expect(esOfertaSenior('Desarrollador Frontend Junior', null)).toBe(false);
             expect(esOfertaSenior('Trainee Web Developer', 'Sin experiencia')).toBe(false);
             expect(esOfertaSenior('Prácticas Desarrollo React', null)).toBe(false);
+        });
+
+        it('debe descartar puestos de perfil experimentado o de dirección aunque no digan Senior', () => {
+            expect(esOfertaSenior('Experienced Artificial Intelligence Engineer (AI Engineer)', null)).toBe(true);
+            expect(esOfertaSenior('Desarrollador Python experimentado', null)).toBe(true);
+            expect(esOfertaSenior('AI Research Lab Co-Founder / CCO (100 % remote)', null)).toBe(true);
+            expect(esOfertaSenior('Cofundadora técnica', null)).toBe(true);
+            // Las siglas solo cuentan en mayúsculas: "cto" dentro de una palabra o en minúsculas no es un cargo
+            expect(esOfertaSenior('Técnico de proyectos de IA', null)).toBe(false);
         });
 
         it('debe descartar 3 años o más, pero no 2 años ni un rango que empieza por debajo', () => {
@@ -184,5 +193,32 @@ describe('csvImport.service', () => {
             expect(filterOffers([ofertaMarbella])).toHaveLength(0);
         });
     });
-});
 
+    describe('parseOffersCsvFromText con normalización', () => {
+        const cabecera = 'fecha_scrape,fecha_publicacion,fuente,empresa,titulo_puesto,categoria,ubicacion,modalidad,url_oferta';
+        const fila = (empresa: string, titulo: string, modalidad: string, url: string) =>
+            `2026-11-25,2026-11-25,LinkedIn,${empresa},"${titulo}",IA,Málaga,${modalidad},${url}`;
+
+        it('corrige con el título la ciudad y la modalidad antes de filtrar por zona', () => {
+            const csv = [cabecera, fila('Experis IT', 'Desarrollador Python/Jenkins Híbrido Barcelona(H/M/X)', 'presencial', 'https://x/1')].join('\n');
+            expect(parseOffersCsvFromText(csv)).toHaveLength(0);
+        });
+
+        it('pasa a remoto una oferta presencial cuyo título dice REMOTO', () => {
+            const csv = [cabecera, fila('METRICA', 'Ingeniero/a de Software para sistemas críticos. REMOTO', 'presencial', 'https://x/2')].join('\n');
+            const [oferta] = parseOffersCsvFromText(csv);
+            expect(oferta.modalidad).toBe('remoto');
+        });
+
+        it('descarta un nombre de persona colado como puesto y marca la empresa que repite el título', () => {
+            const csv = [
+                cabecera,
+                fila('Confidencial', 'José Carlos Díaz Torres', 'presencial', 'https://x/3'),
+                fila('Técnico de IA – Sistemas Multiagente y RAG', 'Técnico de IA – Sistemas Multiagente y RAG', 'presencial', 'https://x/4'),
+            ].join('\n');
+            const ofertas = parseOffersCsvFromText(csv);
+            expect(ofertas).toHaveLength(1);
+            expect(ofertas[0].empresa).toBe('No indicada');
+        });
+    });
+});

@@ -1,5 +1,6 @@
 import { parse } from 'csv-parse/sync';
 import fs from 'node:fs';
+import { normalizarOferta } from './normalizacion.service';
 
 export interface ParsedOffer {
     fecha_scrape: string;
@@ -63,6 +64,12 @@ const PATRONES_SENIOR = [
     /\bdirector\b/i,
     /\bhead of\b/i,
     /\btech lead\b/i,
+    /\bexperienced\b/i,
+    /\bexperimentad[oa]s?\b/i,
+    /\bco-?founder\b/i,
+    /\bcofundador(a)?\b/i,
+    // Cargos de dirección en siglas: solo en mayúsculas, para no confundirlos con palabras normales
+    /\b(CTO|CCO|CEO|CFO|COO)\b/,
     /\bteam lead\b/i,
     /5\+?\s*años/i,
     /\+5\s*años/i,
@@ -191,7 +198,13 @@ export function parseOffersCsvFromText(contenido: string): ParsedOffer[] {
         description: fila.description || '',
     }));
 
-    return filterOffers(parsedOffers);
+    // Primero se corrige cada oferta con lo que dice su título (modalidad, ciudad, empresa) y se descartan las que
+    // no son ofertas; después el filtro previo trabaja ya con los datos corregidos
+    const normalizadas = parsedOffers
+        .map(normalizarOferta)
+        .filter((oferta: ParsedOffer | null): oferta is ParsedOffer => oferta !== null);
+
+    return filterOffers(normalizadas);
 }
 
 export function parseOffersCsv(filePath: string): ParsedOffer[] {
