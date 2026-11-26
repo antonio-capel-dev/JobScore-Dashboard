@@ -5,7 +5,8 @@ import { promisify } from "node:util";
 import { ParsedOffer, parseOffersCsv, parseOffersCsvFromText } from "./csvImport.service";
 import { scoreOffer, ScoringResult, LimiteProveedorError } from "./scoring.service";
 import { sendOfferNotification } from "./telegram.service";
-import { existeOfertaPorUrl, guardarOferta } from "../db/offers.repository";
+import { existeOfertaPorUrl, guardarOferta, obtenerPuestosRecientes } from "../db/offers.repository";
+import { RegistroDePuestos, aplicarTopeSinDescripcion } from "./normalizacion.service";
 
 const execAsync = promisify(exec);
 
@@ -110,8 +111,14 @@ export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSo
 
     // 1. Fuera las que ya están en la base de datos (también las descartadas) y las URL repetidas dentro
     //    del mismo CSV, sin gastar llamadas al modelo: la segunda copia fallaría contra la restricción UNIQUE
+    //    También la misma oferta publicada en otro portal con otra URL (mismo puesto y empresa)
     const nuevas: ParsedOffer[] = [];
     const urlsVistas = new Set<string>();
+    const puestosVistos = new RegistroDePuestos();
+    for (const puesto of await obtenerPuestosRecientes()) {
+        puestosVistos.anadir(puesto.titulo_puesto, puesto.empresa);
+    }
+    let duplicadasEntrePortales = 0;
     for (const offer of ofertas) {
         if (urlsVistas.has(offer.url_oferta)) {
             omitidas++;
@@ -121,9 +128,16 @@ export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSo
 
         if (await existeOfertaPorUrl(offer.url_oferta)) {
             omitidas++;
-        } else {
-            nuevas.push(offer);
+            continue;
         }
+
+        if (puestosVistos.contiene(offer.titulo_puesto, offer.empresa)) {
+            omitidas++;
+            duplicadasEntrePortales++;
+            continue;
+        }
+        puestosVistos.anadir(offer.titulo_puesto, offer.empresa);
+        nuevas.push(offer);
     }
 
     // 2. Primero las que más se parecen al objetivo; el resto se queda para la siguiente ejecución
@@ -134,7 +148,8 @@ export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSo
     for (let i = 0; i < aPuntuar.length; i++) {
         const offer = aPuntuar[i];
         try {
-            const ofertaScored = await scoreOffer(offer);
+            // Sin descripción la nota no puede pasar de 74: el modelo solo ha visto el título
+            const ofertaScored = aplicarTopeSinDescripcion(offer, await scoreOffer(offer));
             resultados.push(ofertaScored);
 
             // Se guarda también la descartada para no volver a puntuarla mañana; la vista solo muestra score >= 45
@@ -172,6 +187,7 @@ export async function procesarOfertas(ofertas: ParsedOffer[]): Promise<ProcessSo
         omitidas,
         resultados,
         saved: guardadas,
+        duplicates: duplicadasEntrePortales,
         discardedByScore: descartadasPorScore,
         errors: fallidas,
         pendientes

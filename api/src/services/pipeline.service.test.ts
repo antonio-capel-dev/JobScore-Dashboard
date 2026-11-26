@@ -7,6 +7,7 @@ vi.mock('../db/supabaseClient', () => ({ supabase: {} }));
 vi.mock('../db/offers.repository', () => ({
     existeOfertaPorUrl: vi.fn(),
     guardarOferta: vi.fn(),
+    obtenerPuestosRecientes: vi.fn(),
 }));
 
 vi.mock('./telegram.service', () => ({
@@ -19,7 +20,7 @@ vi.mock('./scoring.service', async (importOriginal) => {
 });
 
 import { obtenerRutaCsv, prioridadOferta, procesarOfertas } from './pipeline.service';
-import { existeOfertaPorUrl, guardarOferta } from '../db/offers.repository';
+import { existeOfertaPorUrl, guardarOferta, obtenerPuestosRecientes } from '../db/offers.repository';
 import { scoreOffer, LimiteProveedorError, type ScoringResult } from './scoring.service';
 import type { ParsedOffer } from './csvImport.service';
 
@@ -89,6 +90,7 @@ describe('pipeline.service', () => {
             vi.clearAllMocks();
             process.env.SCORING_DELAY_MS = '0';
             vi.mocked(existeOfertaPorUrl).mockResolvedValue(false);
+            vi.mocked(obtenerPuestosRecientes).mockResolvedValue([]);
         });
 
         afterEach(() => {
@@ -162,6 +164,30 @@ describe('pipeline.service', () => {
             expect(resultado.saved).toBe(1);
             expect(resultado.errors).toBe(0);
             expect(resultado.pendientes).toBe(2);
+        });
+
+        it('no puntúa la misma oferta republicada por un agregador con otra URL', async () => {
+            vi.mocked(obtenerPuestosRecientes).mockResolvedValue([
+                { titulo_puesto: 'Data Engineer - Big Query - EY GDS Spain - Hybrid', empresa: 'EY' },
+            ]);
+            vi.mocked(scoreOffer).mockResolvedValue(nota(80, 'Si'));
+            const republicada = { ...oferta('Data Engineer - Big Query - EY GDS Spain - Hybrid', 'otra-url'), empresa: 'Universia España' };
+
+            const resultado = await procesarOfertas([republicada, oferta('AI Engineer', 'u2')]);
+
+            expect(scoreOffer).toHaveBeenCalledTimes(1);
+            expect(resultado.duplicates).toBe(1);
+            expect(resultado.omitidas).toBe(1);
+        });
+
+        it('limita a 74 la nota de una oferta sin descripción antes de guardarla', async () => {
+            vi.mocked(scoreOffer).mockResolvedValue(nota(85, 'Si'));
+
+            await procesarOfertas([oferta('Data Engineer', 'u1')]);
+
+            const [, guardada] = vi.mocked(guardarOferta).mock.calls[0];
+            expect(guardada.score).toBe(74);
+            expect(guardada.veredicto).toBe('Quizas');
         });
 
         it('cuenta como error un fallo normal del modelo y sigue con la siguiente oferta', async () => {
