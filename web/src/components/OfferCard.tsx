@@ -6,6 +6,8 @@ interface OfferCardProps {
     oferta: Offer;
     // false en la vista pública: se ocultan la fase de la candidatura y las notas
     editable: boolean;
+    // La brecha y la recomendación son análisis personal del candidato: solo las ve el propietario
+    mostrarAnalisisIA: boolean;
     onCambiarEstado: (id: number, nuevoEstado: Offer['estado_candidatura']) => void | Promise<void>;
     onGuardarNotas?: (id: number, notas: string) => void | Promise<void>;
 }
@@ -59,7 +61,7 @@ function esNueva(created_at: string | undefined): boolean {
 
 
 
-export function OfferCard({ oferta, editable, onCambiarEstado, onGuardarNotas }: OfferCardProps) {
+export function OfferCard({ oferta, editable, mostrarAnalisisIA, onCambiarEstado, onGuardarNotas }: OfferCardProps) {
     const sc = scoreColor(oferta.score);
     const [expandido, setExpandido] = useState(false);
     const [mostrandoNotas, setMostrandoNotas] = useState(false);
@@ -287,7 +289,7 @@ export function OfferCard({ oferta, editable, onCambiarEstado, onGuardarNotas }:
                     </div>
 
                     {/* Brecha y Recomendación */}
-                    {(oferta.brecha_principal || oferta.recomendacion) && (
+                    {mostrarAnalisisIA && (oferta.brecha_principal || oferta.recomendacion) && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
                             {oferta.brecha_principal && (
                                 <div className="bg-rose-50/60 border border-rose-100 rounded-lg p-3 text-xs text-rose-900">

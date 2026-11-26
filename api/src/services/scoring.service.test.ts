@@ -141,6 +141,13 @@ describe('scoring.service', () => {
             url_oferta: 'https://ejemplo.com/oferta/123'
         };
 
+        it('debe pedir que la brecha y la recomendación no expongan datos personales', () => {
+            const prompt = construirPrompt(mockOffer);
+            expect(prompt).toContain('se muestran en público');
+            expect(prompt).toContain('No menciones clases, estudios en curso, horarios personales');
+            expect(prompt).toContain('Horario de tarde incompatible');
+        });
+
         it('debe incluir el perfil objetivo del candidato en el prompt', () => {
             const prompt = construirPrompt(mockOffer);
             expect(prompt).toContain('Junior AI / Data Engineer');
