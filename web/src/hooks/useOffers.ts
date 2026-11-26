@@ -32,8 +32,27 @@ export function useOffers(session: Session | null) {
 
     // Recarga al entrar o salir de la sesión: el propietario recibe además fases y notas
     useEffect(() => {
-        recargarOfertas();
-    }, [recargarOfertas, usuarioId]);
+        let cancelado = false;
+        fetchOffers(tokenRef.current)
+            .then((data) => {
+                if (!cancelado) {
+                    setOffers(data);
+                    setError(null);
+                }
+            })
+            .catch((err) => {
+                if (!cancelado) {
+                    console.error("Error cargando ofertas:", err);
+                    setError(err instanceof Error ? err.message : "Error de conexión con la API");
+                }
+            })
+            .finally(() => {
+                if (!cancelado) setCargando(false);
+            });
+        return () => {
+            cancelado = true;
+        };
+    }, [usuarioId]);
 
     function exigirToken(): string {
         const token = tokenRef.current;
