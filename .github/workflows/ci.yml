@@ -1,9 +1,10 @@
 name: CI
 
+# Mientras GitHub mantenga bloqueada la cuenta por un problema de facturación
+# (ticket abierto el 26-nov-2026), el CI solo se lanza a mano desde la pestaña Actions.
+# Cuando se resuelva, volver a activar push a main y pull_request.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
