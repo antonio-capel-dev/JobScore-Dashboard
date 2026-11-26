@@ -157,32 +157,6 @@ function App() {
   const [mensajeSubida, setMensajeSubida] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Función para exportar las candidaturas actuales a CSV descargable
-  const exportarCsv = () => {
-    const cabeceras = ['Puesto', 'Empresa', 'Score', 'Fase', 'Modalidad', 'Ubicación', 'Salario', 'Notas', 'Enlace'];
-    const filas = ofertasFiltradas.map(o => [
-      `"${(o.titulo_puesto || '').replace(/"/g, '""')}"`,
-      `"${(o.empresa || '').replace(/"/g, '""')}"`,
-      o.score,
-      o.estado_candidatura || 'Sin postular',
-      o.modalidad,
-      `"${(o.ubicacion || '').replace(/"/g, '""')}"`,
-      `"${o.salario_min ? `${o.salario_min}€` : ''}${o.salario_min && o.salario_max ? ' - ' : ''}${o.salario_max ? `${o.salario_max}€` : ''}"`,
-      `"${(o.notas || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
-      `"${o.url_oferta || ''}"`
-    ]);
-
-    const contenidoCsv = [cabeceras.join(','), ...filas.map(f => f.join(','))].join('\n');
-    const blob = new Blob(['\uFEFF' + contenidoCsv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${puedeEditar ? 'mis_candidaturas' : 'ofertas_jobscore'}_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const handleSubirArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -327,6 +301,32 @@ function App() {
       return new Date(b.fecha_publicacion || b.fecha_scrape || 0).getTime() - new Date(a.fecha_publicacion || a.fecha_scrape || 0).getTime();
     });
   }, [ofertas, busquedaTexto, modalidadSeleccionada, fuenteSeleccionada, estadoEfectivo, scoreMinimo, ordenSeleccionado]);
+
+  // Función para exportar las candidaturas actuales a CSV descargable
+  const exportarCsv = () => {
+    const cabeceras = ['Puesto', 'Empresa', 'Score', 'Fase', 'Modalidad', 'Ubicación', 'Salario', 'Notas', 'Enlace'];
+    const filas = ofertasFiltradas.map(o => [
+      `"${(o.titulo_puesto || '').replace(/"/g, '""')}"`,
+      `"${(o.empresa || '').replace(/"/g, '""')}"`,
+      o.score,
+      o.estado_candidatura || 'Sin postular',
+      o.modalidad,
+      `"${(o.ubicacion || '').replace(/"/g, '""')}"`,
+      `"${o.salario_min ? `${o.salario_min}€` : ''}${o.salario_min && o.salario_max ? ' - ' : ''}${o.salario_max ? `${o.salario_max}€` : ''}"`,
+      `"${(o.notas || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+      `"${o.url_oferta || ''}"`
+    ]);
+
+    const contenidoCsv = [cabeceras.join(','), ...filas.map(f => f.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + contenidoCsv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${puedeEditar ? 'mis_candidaturas' : 'ofertas_jobscore'}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Datos para gráficas
   const datosModalidad = [
