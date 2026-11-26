@@ -9,6 +9,8 @@ import type { Session } from "@supabase/supabase-js";
 import type { Offer } from "./types/offer";
 import { DIAS_VENTANA_PUBLICA, estaEnVentanaPublica } from "./utils/vistaPublica";
 
+const MIN_OFERTAS_CON_SALARIO = 5;
+
 function SkeletonCard() {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm space-y-4 animate-pulse">
@@ -149,7 +151,8 @@ function App() {
   const [fuenteSeleccionada, setFuenteSeleccionada] = useState('todas');
   const [estadoSeleccionado, setEstadoSeleccionado] = useState('todos');
   const [scoreMinimo, setScoreMinimo] = useState(0);
-  const [ordenSeleccionado, setOrdenSeleccionado] = useState<'recientes' | 'score' | 'antiguas'>('recientes');
+  // null = el visitante aún no ha elegido orden: el público ve primero las mejores y el propietario las más recientes
+  const [ordenSeleccionado, setOrdenSeleccionado] = useState<'recientes' | 'score' | 'antiguas' | null>(null);
   const [vistaActual, setVistaActual] = useState<'lista' | 'kanban'>('lista');
 
   // Estado para subida directa de CSV
@@ -258,6 +261,7 @@ function App() {
 
   // En la vista pública no hay fases que filtrar
   const estadoEfectivo = puedeEditar ? estadoSeleccionado : 'todos';
+  const ordenEfectivo = ordenSeleccionado ?? (puedeEditar ? 'recientes' : 'score');
 
   // Filtrado y Ordenación de ofertas
   const ofertasFiltradas = useMemo(() => {
@@ -291,16 +295,16 @@ function App() {
     });
 
     return filtradas.sort((a, b) => {
-      if (ordenSeleccionado === 'score') {
+      if (ordenEfectivo === 'score') {
         return b.score - a.score;
       }
-      if (ordenSeleccionado === 'antiguas') {
+      if (ordenEfectivo === 'antiguas') {
         return new Date(a.fecha_publicacion || a.fecha_scrape || 0).getTime() - new Date(b.fecha_publicacion || b.fecha_scrape || 0).getTime();
       }
       // 'recientes' por defecto (más nuevas arriba)
       return new Date(b.fecha_publicacion || b.fecha_scrape || 0).getTime() - new Date(a.fecha_publicacion || a.fecha_scrape || 0).getTime();
     });
-  }, [ofertas, busquedaTexto, modalidadSeleccionada, fuenteSeleccionada, estadoEfectivo, scoreMinimo, ordenSeleccionado]);
+  }, [ofertas, busquedaTexto, modalidadSeleccionada, fuenteSeleccionada, estadoEfectivo, scoreMinimo, ordenEfectivo]);
 
   // Función para exportar las candidaturas actuales a CSV descargable
   const exportarCsv = () => {
@@ -353,13 +357,16 @@ function App() {
   // El tablero Kanban es seguimiento personal: solo con sesión
   const vista = puedeEditar ? vistaActual : 'lista';
 
+  // Con menos de 5 salarios publicados la media no es representativa
+  const muestraSalarioSuficiente = estadisticas.ofertasConSalario >= MIN_OFERTAS_CON_SALARIO;
+
   const restablecerFiltros = () => {
     setBusquedaTexto('');
     setModalidadSeleccionada('todas');
     setFuenteSeleccionada('todas');
     setEstadoSeleccionado('todos');
     setScoreMinimo(0);
-    setOrdenSeleccionado('recientes');
+    setOrdenSeleccionado(null);
   };
 
   return (
@@ -419,17 +426,20 @@ function App() {
               <span>📥 Exportar CSV</span>
             </button>
 
-            <button
-              onClick={() => recargarOfertas()}
-              disabled={cargando}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors disabled:opacity-50"
-              title="Actualizar datos desde la API"
-            >
-              <svg className={`w-3.5 h-3.5 ${cargando ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>{cargando ? 'Cargando...' : 'Sincronizar'}</span>
-            </button>
+            {/* Recargar a mano es una herramienta del propietario: el público ya recibe los datos al entrar */}
+            {puedeEditar && (
+              <button
+                onClick={() => recargarOfertas()}
+                disabled={cargando}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors disabled:opacity-50"
+                title="Actualizar datos desde la API"
+              >
+                <svg className={`w-3.5 h-3.5 ${cargando ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>{cargando ? 'Cargando...' : 'Sincronizar'}</span>
+              </button>
+            )}
 
             <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
 
@@ -553,12 +563,14 @@ function App() {
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Salario medio</span>
             <div className="text-3xl font-black text-slate-900">
-              {kpi(estadisticas.salarioPromedio > 0 ? `${estadisticas.salarioPromedio.toLocaleString('es-ES')}€` : 'N/A')}
+              {kpi(muestraSalarioSuficiente && estadisticas.salarioPromedio > 0 ? `${estadisticas.salarioPromedio.toLocaleString('es-ES')}€` : '—')}
             </div>
             <p className="text-[11px] text-slate-500">
               {estadisticas.ofertasConSalario === 0
                 ? 'Ninguna oferta publica salario'
-                : `De ${estadisticas.ofertasConSalario} ${estadisticas.ofertasConSalario === 1 ? 'oferta que publica' : 'ofertas que publican'} salario${estadisticas.ofertasConSalario < 10 ? ' (muestra pequeña)' : ''}`}
+                : !muestraSalarioSuficiente
+                  ? `Muestra insuficiente: ${estadisticas.ofertasConSalario} ${estadisticas.ofertasConSalario === 1 ? 'oferta publica' : 'ofertas publican'} salario`
+                  : `De ${estadisticas.ofertasConSalario} ofertas que publican salario${estadisticas.ofertasConSalario < 10 ? ' (muestra pequeña)' : ''}`}
             </p>
           </div>
         </section>
@@ -674,7 +686,7 @@ function App() {
             <div className="space-y-1">
               <label className="text-[11px] font-bold text-slate-500 uppercase">Ordenar por</label>
               <select 
-                value={ordenSeleccionado} 
+                value={ordenEfectivo} 
                 onChange={(e) => setOrdenSeleccionado(e.target.value as 'recientes' | 'score' | 'antiguas')}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -814,6 +826,7 @@ function App() {
                     key={oferta.id}
                     oferta={oferta}
                     editable={puedeEditar}
+                    mostrarAnalisisIA={puedeEditar}
                     onCambiarEstado={cambiarEstado}
                     onGuardarNotas={guardarNotas}
                   />
