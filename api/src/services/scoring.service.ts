@@ -74,8 +74,9 @@ Reglas estrictas de evaluación:
 3. Desarrollo web: oferta junior web (React, Node, TypeScript) con un componente directo de IA o de datos → score entre 60 y 80. Sin componente de IA ni de datos → score máximo 55.
 4. Stack descartado: Java, Angular, .NET, C#, PHP, WordPress o Salesforce sin Python, datos ni IA → score menor de 45 y veredicto "No".
 5. Fuera de alcance: Data Scientist puro (suele exigir grado cuantitativo), Big Data pesado como requisito indispensable (Hadoop, Spark con Scala) o SAP/ABAP/Cobol → score menor de 45.
-6. Horario: si la oferta exige presencia las tardes de lunes a jueves, dilo en "brechaPrincipal" (no bajes el score solo por eso).
+6. Horario: si la oferta exige presencia las tardes de lunes a jueves, escribe en "brechaPrincipal" solo "Horario de tarde incompatible" (no bajes el score solo por eso).
 7. No supongas experiencia que no está en el perfil: si la oferta pide algo que el candidato no tiene, esa es la brecha.
+8. "brechaPrincipal" y "recomendacion" se muestran en público: habla de la oferta y de las habilidades. No menciones clases, estudios en curso, horarios personales, ubicación ni disponibilidad del candidato, salvo la frase de la regla 6.
 
 OFERTA A EVALUAR:
 - Puesto: ${offer.titulo_puesto}
