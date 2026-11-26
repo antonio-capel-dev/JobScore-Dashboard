@@ -7,7 +7,7 @@ import { supabase } from "./api/supabaseClient";
 import { uploadOffersCsv } from "./api/offers";
 import type { Session } from "@supabase/supabase-js";
 import type { Offer } from "./types/offer";
-import { DIAS_VENTANA_PUBLICA, estaEnVentanaPublica } from "./utils/vistaPublica";
+import { DIAS_VENTANA_PUBLICA, estaEnVentanaPublica, puntuadaConPerfilAnterior } from "./utils/vistaPublica";
 
 const MIN_OFERTAS_CON_SALARIO = 5;
 
@@ -296,6 +296,10 @@ function App() {
 
     return filtradas.sort((a, b) => {
       if (ordenEfectivo === 'score') {
+        // Las puntuadas con el perfil anterior (web) no compiten con las del perfil actual (IA y datos)
+        const anteriorA = puntuadaConPerfilAnterior(a);
+        const anteriorB = puntuadaConPerfilAnterior(b);
+        if (anteriorA !== anteriorB) return anteriorA ? 1 : -1;
         return b.score - a.score;
       }
       if (ordenEfectivo === 'antiguas') {
